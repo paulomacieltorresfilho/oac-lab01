@@ -1,5 +1,7 @@
 # oac-lab01
 
+Instruções identificadas por switch case
+
 TODO:
 
 - [ ] Comparar Strings
