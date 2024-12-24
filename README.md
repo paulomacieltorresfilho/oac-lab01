@@ -2,13 +2,16 @@
 
 Instruções identificadas por switch case
 
+
 TODO:
 
-- [ ] Comparar Strings
-- [ ] Ler arquivo por linha
-- [ ] Separar linhas em partes da intrução
-- [ ] Ler registradores e seus apelidos ($zero = $0 ...)
-- [ ] Iterar nas linhas para montar cada instrução
+- [ ] Comparar Strings (Guilherme)
+- [ ] Separar linhas em partes da intrução (Guilherme)
+
+- [ ] Ler arquivo por linha (Paulo)
+- [ ] Iterar nas linhas para montar cada instrução (Paulo)
+- [ ] Ler registradores e seus apelidos ($zero = $0 ...) (Paulo)
+
 - [ ] Criar arquivo mif, com header e footer
 
 - [ ] Separar .text e .data
