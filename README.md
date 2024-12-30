@@ -23,3 +23,5 @@ TODO:
 
 1. Não foi possível ler o arquivo por linha. A solução encontrada foi ler o arquivo 
 inteiro de uma vez e depois fazer um iterator para tratar cada linha individualmente.
+
+2. Verificar necessidade de limpar o buffer de linha após o tratamento de uma linha.
