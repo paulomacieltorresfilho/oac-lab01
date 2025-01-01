@@ -62,10 +62,10 @@ LINE_ITERATOR:
 		sb $t3, ($t1) # se nao for o fim do arquivo, armazena o char em no endereco t1
 		addi $t0, $t0, 1 # endereco do proximo char do arquivo
 		addi $t1, $t1, 1 # proxima posicao da linha
-		beq $t3, $t2, DO_SOMETHING # se o char t3 for igual '\n', a linha acabou e uma funcao deve ser chamada para tratar a linha
+		beq $t3, $t2, LINE_FUNCTION # se o char t3 for igual '\n', a linha acabou e uma funcao deve ser chamada para tratar a linha
 		j LOOP
 
-	DO_SOMETHING:
+	LINE_FUNCTION:
 		move $a0, $t4
 		li $v0, 1
 		syscall
