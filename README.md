@@ -16,7 +16,7 @@ TODO:
 - [ ] Ler registradores e seus apelidos ($zero = $0 ...) (Paulo)
 	- [ ] Ler registradores sem máscara
 	- [x] Ler registradores com máscara
-	- [ ] Tratar diferentemente o t8 e t9 por não estarem na sequencia dos outros t's
+	- [x] Tratar diferentemente o t8 e t9 por não estarem na sequencia dos outros t's
 	- [ ] Adicionar tratamento para registradores diferentes (sp, ra)
 
 

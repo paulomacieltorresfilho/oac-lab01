@@ -4,8 +4,7 @@
 	registradores_a: .byte '4', 0x4 # 4 registradores, primeiro é o 0x4
 	registradores_t: .byte '8', 0x8
 	registradores_s: .byte '8', 0x10
-	registradores_t_pt2: .byte '2', 0x18
-	registrador_exemplo: .ascii "$a0"
+	registrador_exemplo: .ascii "$s0"
 	
 .text
 
@@ -13,6 +12,10 @@ MAIN:
 	la $a0, registrador_exemplo
 	jal CONVERTE_REGISTRADOR
 	move $s0, $v0
+	
+	move $a0, $s0
+	li $v0, 1
+	syscall
 	
 	li $v0, 10
 	syscall
@@ -40,9 +43,9 @@ CONVERTE_REGISTRADOR:
 	
 	# Verifica se é 0
 	li $t9, '0'
-	beq $t1, $t9, ZERO
+	beq $t1, $t9, CASE_ZERO
 	li $t9, 'z'
-	beq $t1, $t9, ZERO
+	beq $t1, $t9, CASE_ZERO
 	
 	# Verifica se é V
 	li $t9, 'v'
@@ -86,13 +89,31 @@ CONVERTE_REGISTRADOR:
 		
 		jr $ra
 	
-	ZERO:
+	CASE_ZERO:
 		li $v0, 0
 		j EXIT_CONVERTE_REGISTRADOR
 		
 	CASE_REG_T:
 		# Tratamento diferente por conta dos t8 e t9
+		
+		lb $t1, 2($t0) # terceiro byte
+		
+		li, $t2, '8'
+		beq $t1, $t2, CASE_REG_T8
+		
+		li, $t2, '9'
+		beq $t1, $t2, CASE_REG_T9
+		
+		la $a0, registradores_t
 		jal LE_TERCEIRO_CARACTER
+		j EXIT_CONVERTE_REGISTRADOR
+		
+	CASE_REG_T8:
+		li $v0, 24
+		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_T9:
+		li $v0, 25
 		j EXIT_CONVERTE_REGISTRADOR
 		
 	CASE_REG_V:
