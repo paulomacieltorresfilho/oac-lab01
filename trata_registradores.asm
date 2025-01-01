@@ -4,7 +4,8 @@
 	registradores_a: .byte '4', 0x4 # 4 registradores, primeiro é o 0x4
 	registradores_t: .byte '8', 0x8
 	registradores_s: .byte '8', 0x10
-	registrador_exemplo: .ascii "$s0"
+	registradores_k: .byte '2', 0x1a
+	registrador_exemplo: .ascii "$rs"
 	
 .text
 
@@ -20,11 +21,6 @@ MAIN:
 	li $v0, 10
 	syscall
 
-# a0: byte a ser convertido
-# v0: valor númerico do byte
-# CONVERTE_ASCII_NUM:
-	# subi $v0, $a0, 0x30 # subtrai 00110000 para ter somente os 4 bits do número
-	# jr $ra
 
 # a0: endereco da string do registrador
 # v0: valor em bytes do registrador
@@ -40,6 +36,17 @@ CONVERTE_REGISTRADOR:
 	
 	# Trata primeiro caractere após $
 	lb $t1, 1($t0)
+	
+	# Verifica se o registrador é apenas numérico (ex: $8, $1, $0)
+	li $t2, 0x30
+	sge $t3, $t1, $t2 # t3 -> 1 se t1 for maior ou igual a '0'
+	
+	li $t2, 0x39
+	sle $t4, $t1, $t2 # t4 -> 1 se t1 for menor ou igual a '9'
+	
+	and $t5, $t3, $t4 # t5 -> 1 se o caracter estiver entre '0' e '9'
+	not $t5, $t5 # t5 -> 0 se o caracter estiver entre '0' e '9'
+	beqz $t5, CASE_REG_NUMERICO
 	
 	# Verifica se é 0
 	li $t9, '0'
@@ -63,8 +70,15 @@ CONVERTE_REGISTRADOR:
 	li $t9, 's'
 	beq $t1, $t9, CASE_REG_S
 	
-	j ERROR
+	# Verifica se é k
+	li $t9, 'k'
+	beq $t1, $t9, CASE_REG_K
 	
+	# Verifica se é r
+	li $t9, 'r'
+	beq $t1, $t9, CASE_REG_R
+	
+	j ERROR
 
 	# a0: endereco dos dados dos registadores
 	LE_TERCEIRO_CARACTER:
@@ -92,6 +106,13 @@ CONVERTE_REGISTRADOR:
 	CASE_ZERO:
 		li $v0, 0
 		j EXIT_CONVERTE_REGISTRADOR
+		
+	CASE_REG_NUMERICO:
+		lb $t1, 1($t0) # segundo byte do registrador
+		subi $t2, $t1, 0x30
+		sge $t3, $t2, 4 # t3 -> 1 se 3 caracter nao deve existir
+		## Continuar após entender como foi feita separação das partes da instrucao
+		
 		
 	CASE_REG_T:
 		# Tratamento diferente por conta dos t8 e t9
@@ -125,10 +146,35 @@ CONVERTE_REGISTRADOR:
 		la $a0, registradores_a
 		jal LE_TERCEIRO_CARACTER
 		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_K:
+		la $a0, registradores_k
+		jal LE_TERCEIRO_CARACTER
+		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_R:
+		lb $t1, 2($t0)
+		li $t2, 'a'
+		beq $t1, $t2, CASE_REG_RA # Verifica se registrador é ra
+		
+		j ERROR
+	
+	CASE_REG_RA:
+		li $v0, 31
+		j EXIT_CONVERTE_REGISTRADOR
 		
 	CASE_REG_S:
+	
+		lb $t1, 2($t0)
+		li $t2, 'p'
+		beq $t1, $t2, CASE_REG_SP  # verifica se registrador é o $sp
+	
 		la $a0, registradores_s
 		jal LE_TERCEIRO_CARACTER
+		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_SP:
+		li $v0, 29
 		j EXIT_CONVERTE_REGISTRADOR
 		
 	ERROR:

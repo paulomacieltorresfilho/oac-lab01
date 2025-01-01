@@ -17,7 +17,7 @@ TODO:
 	- [ ] Ler registradores sem máscara
 	- [x] Ler registradores com máscara
 	- [x] Tratar diferentemente o t8 e t9 por não estarem na sequencia dos outros t's
-	- [ ] Adicionar tratamento para registradores diferentes (sp, ra)
+	- [x] Adicionar tratamento para registradores diferentes (sp, ra)
 
 
 - [ ] Criar arquivo mif, com header e footer
