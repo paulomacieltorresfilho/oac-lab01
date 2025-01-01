@@ -66,16 +66,19 @@ LINE_ITERATOR:
 		j LOOP
 
 	LINE_FUNCTION:
-		move $a0, $t4
-		li $v0, 1
-		syscall
+		sb $zero, ($t1) # adiciona \0 no final da linha
+			
+			move $a0, $t4
+			li $v0, 1
+			syscall
 	
-		la $t1, line_buffer # volta t1 para o endereco 0 do line_buffer
-		move $a0, $t1
-		li $v0, 4
-		syscall
+			la $t1, line_buffer # volta t1 para o endereco 0 do line_buffer
+			move $a0, $t1
+			li $v0, 4
+			syscall
 		
-		addi $t4, $t4, 1
+			addi $t4, $t4, 1
+			
 		j LOOP
 	
 	EOF:
