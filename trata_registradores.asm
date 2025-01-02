@@ -5,7 +5,7 @@
 	registradores_t: .byte '8', 0x8
 	registradores_s: .byte '8', 0x10
 	registradores_k: .byte '2', 0x1a
-	registrador_exemplo: .ascii "$rs"
+	registrador_exemplo: .ascii "$31"
 	
 .text
 
@@ -38,35 +38,32 @@ CONVERTE_REGISTRADOR:
 	lb $t1, 1($t0)
 	
 	# Verifica se o registrador é apenas numérico (ex: $8, $1, $0)
-	li $t2, 0x30
+	li $t2, '0'
 	sge $t3, $t1, $t2 # t3 -> 1 se t1 for maior ou igual a '0'
 	
-	li $t2, 0x39
+	li $t2, '9'
 	sle $t4, $t1, $t2 # t4 -> 1 se t1 for menor ou igual a '9'
 	
 	and $t5, $t3, $t4 # t5 -> 1 se o caracter estiver entre '0' e '9'
-	not $t5, $t5 # t5 -> 0 se o caracter estiver entre '0' e '9'
-	beqz $t5, CASE_REG_NUMERICO
+	bnez $t5, CASE_REG_NUM
 	
 	# Verifica se é 0
-	li $t9, '0'
-	beq $t1, $t9, CASE_ZERO
 	li $t9, 'z'
 	beq $t1, $t9, CASE_ZERO
 	
-	# Verifica se é V
+	# Verifica se é v
 	li $t9, 'v'
 	beq $t1, $t9, CASE_REG_V
 	
-	# Verifica se é T
+	# Verifica se é t
 	li $t9, 't'
 	beq $t1, $t9, CASE_REG_T
 	
-	# Verifica se é A
+	# Verifica se é a
 	li $t9, 'a'
 	beq $t1, $t9, CASE_REG_A
 	
-	# Verifica se é S
+	# Verifica se é s
 	li $t9, 's'
 	beq $t1, $t9, CASE_REG_S
 	
@@ -107,11 +104,63 @@ CONVERTE_REGISTRADOR:
 		li $v0, 0
 		j EXIT_CONVERTE_REGISTRADOR
 		
-	CASE_REG_NUMERICO:
-		lb $t1, 1($t0) # segundo byte do registrador
-		subi $t2, $t1, 0x30
-		sge $t3, $t2, 4 # t3 -> 1 se 3 caracter nao deve existir
-		## Continuar após entender como foi feita separação das partes da instrucao
+	CASE_REG_NUM:
+		subi $t2, $t1, 0x30 # t2 recebe valor inteiro do ascii do segundo byte do nome do registrador
+		
+		lb $t1, 2($t0) # terceiro byte do registrador
+		beqz $t1, CASE_REG_NUM_UM_DIG # Se terceiro caracter for \0 (não existir)
+		
+		beqz $t2, ERROR # Se o valor do segundo byte for 0, 3° caracter nao de existir
+		
+		li $t4, 4
+		bge $t2, $t4, ERROR # Se 3° caracter nao deve existir, ir para erro
+		
+		li $t4, 3
+		beq $t2, $t4, CASE_REG_NUM_2_DIG_30
+		
+		j CASE_REG_NUM_2_DIG
+	
+	CASE_REG_NUM_UM_DIG:
+		move $v0, $t2
+		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_NUM_2_DIG:
+		#$t2 -> valor primeiro byte
+		#$t1 -> ascii segundo byte
+		li $t3, '0'
+		sge $t4, $t1, $t3 # t4 1 -> se t1 for maior ou igual a 0
+		
+		li $t3, '9'
+		sle $t5, $t1, $t3 # t5 1 -> se t1 for menor ou igual a 9
+		
+		and $t6, $t5, $t4 # 1 se estiver no range
+		beqz $t6, ERROR # se não estiver no range, lançar error
+		
+		subi $t1, $t1, 0x30 # valor númerico segundo byte
+		
+		li $t3, 10
+		mult $t2, $t3
+		
+		mflo $t2 # salva em t2 a multiplicacao de t2*10
+		add $v0, $t2, $t1
+		
+		j EXIT_CONVERTE_REGISTRADOR
+		
+	CASE_REG_NUM_2_DIG_30:
+		li $t3, '0'
+		blt $t1, $t3, ERROR
+		
+		li $t3, '1'
+		bgt $t1, $t3, ERROR
+		
+		subi $t1, $t1, 0x30 # valor númerico segundo byte
+		
+		li $t3, 10
+		mult $t2, $t3
+		
+		mflo $t2 # salva em t2 a multiplicacao de t2*10
+		add $v0, $t2, $t1
+		j EXIT_CONVERTE_REGISTRADOR
 		
 		
 	CASE_REG_T:
@@ -143,8 +192,16 @@ CONVERTE_REGISTRADOR:
 		j EXIT_CONVERTE_REGISTRADOR
 		
 	CASE_REG_A:
+		lb $t1, 2($t0)
+		li $t2, 't'
+		beq $t1, $t2, CASE_REG_AT # Verifica se registrador é at
+	
 		la $a0, registradores_a
 		jal LE_TERCEIRO_CARACTER
+		j EXIT_CONVERTE_REGISTRADOR
+	
+	CASE_REG_AT:
+		li $v0, 1
 		j EXIT_CONVERTE_REGISTRADOR
 	
 	CASE_REG_K:

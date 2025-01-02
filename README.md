@@ -14,7 +14,7 @@ TODO:
 	- [ ] Tratar quando o '\0' não estiver numa linha separada
 	- [x] Adicionar '\0' no final da linha por conta do buffer
 - [ ] Ler registradores e seus apelidos ($zero = $0 ...) (Paulo)
-	- [ ] Ler registradores sem máscara
+	- [x] Ler registradores sem máscara
 	- [x] Ler registradores com máscara
 	- [x] Tratar diferentemente o t8 e t9 por não estarem na sequencia dos outros t's
 	- [x] Adicionar tratamento para registradores diferentes (sp, ra)
