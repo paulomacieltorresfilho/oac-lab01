@@ -1,5 +1,5 @@
 .data  
-file: .asciiz "file2.a (osm"      # filename for input
+file: .asciiz "file2.asm"      # filename for input
 buffer_leitura: .space 1024
 buffer_escrita: .space 1024
 
@@ -40,52 +40,30 @@ comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 #		div $t1, $t2
 #		mfhi/mflo $t1
 
-#		Grupo 1
+
 #		clo $t1, $t2
 #		srav $t1, $t2, $t3
 #		sra $t2, $t1, 10
 #		movn $t1, $t2, $t3
 #		mul $t1, $t2, $t5
 
-#		Grupo 2
-#		sltu $t1, $t2, -100
-#		clo $t1, $t2
-#		clz $t1, $t2
-#		addu $t1, $t2, $t3
-#		divu $s1, $s2
-
-
-
 #     Tipo J (as j... menos jr)
 #		j LABEL
 #		jal LABEL
 
-#     Tipo I
+#     Tipo I (o resto)
 #		lw $t0, OFFSET($s3)
-#		addi/andi/ori/xori $t2, $t3, -10   
-#		add $t0, $t2, 1000                 pseudo
+#		addi/andi/ori/xori $t2, $t3, -10
+#		add $t0, $t2, 1000
 #		sw $t0, OFFSET($s3)
 #		beq/bne $t1, $zero, LABEL
-#		lui $t1, 0xXXXX                   imm
-#		lb $t1, 100($t2)                  
+#		lui $t1, 0xXXXX
+#		lb $t1, 100($t2)
 
-#		Grupo 1
 #		bgez $t1, LABEL
 #		addiu $t1, $t2, $t3
 #		bgezal $t1, LABEL
 #		sb $t4, 1000($t2)
-
-#		Grupo 2
-#		slti $t1, $t2, -100
-#		bltzal $t1, LABEL
-#		lhu $t1, -100($t2)
-#		bgezall $s2, LABEL
-#       cop2 func
-
-
-#     Formato próprio (debug)  
-#       deret
-
 # 3.2 lê operandos ($t0 ...)
 
 # 4.
@@ -249,7 +227,7 @@ j tipo_r
 addi_inst:
 # OPCODE: 001000 => 0010/0000 = 0x20
 jal consume_whitespace
-lui $s0, 0x20
+lui $s0, 0x2000
 #addi $s0,$zero,0x08
 #sll $s0,$s0,26
 j tipo_i
@@ -257,14 +235,14 @@ j tipo_i
 andi_inst:
 # OPCODE: 001100 => 0011/0000
 jal consume_whitespace
-lui $s0, 0x30
+lui $s0, 0x3000
 j tipo_i
 
 addiu_inst:
 # OPCODE: 001001 => 0010/0100
 jal read_byte_express #incrementa o ponteiro sem carregar de fato o byte
 jal consume_whitespace
-lui $s0,0x24
+lui $s0,0x2400
 j tipo_i
 
 
@@ -300,12 +278,12 @@ j error_instruction_not_found
 # INSTRUÇÔES COM B
 beq_inst:
 # OPCODE: 000100 => 0001/0000  = 0x10
-lui $s0,0x10
+lui $s0,0x1000
 j tipo_i
 
 bne_inst:
 # OPCODE: 000101 => 0001/0100 = 0x14
-lui $s0,0x14
+lui $s0,0x1400
 j tipo_i
 
 
@@ -313,7 +291,7 @@ bgez_inst:
 # REGIMM(31-26) len6 : 000001 => 0000/0100 => 0x04
 # BGEZ(20-16) len 5: 00001 => 0000/0001 => 0x01
 jal consume_whitespace
-lui $s0,0x04
+lui $s0,0x0400
 addi $t1,$zero,0x01
 sll $t1,$t1,16
 or $s0,$s0,$t1
@@ -325,7 +303,7 @@ bgezal_inst:
 # BGEZ(20-16) len 5: 10001=> 0001/0001=> 0x11
 jal read_next_2bytes_express
 jal consume_whitespace
-lui $s0,0x04
+lui $s0,0x0400
 addi $t1,$zero,0x11
 sll $t1,$t1,16
 or $s0,$s0,$t1
@@ -351,7 +329,7 @@ clo_inst:
 # OPCODE: 011100 => 0111/0000 => 0x70
 # SHAMT: 0
 # FUNCT: 100001 => 0010/0001 => 0x21
-lui $s0,0x70
+lui $s0,0x7000
 ori $s0,$s0,0x21
 j tipo_r
 ########### END BRANCH C
@@ -419,13 +397,13 @@ j_inst:
 # OPCODE: 000010 => 0000/1000 = 0x08
 jal read_byte_express
 jal consume_whitespace
-lui $s0,0x08
+lui $s0,0x0800
 j tipo_j
 
 
 jal_inst:
 # OPCODE: 000011 => 0000/1100
-lui $s0,0x0C
+lui $s0,0x0C00
 j tipo_j
 
 ########### END BRANCH J
@@ -453,19 +431,19 @@ lw_inst:
 # OPCODE: 100011 => 1000/1100 =0x8C
 jal read_next_2bytes_express
 jal consume_whitespace
-lui $s0,0x8C
+lui $s0,0x8C00
 j tipo_i
 
 lui_inst:
 # OPCODE: 001111 => 0011/1100 = 0x3C
-lui $s0,0x3C
+lui $s0,0x3C00
 j tipo_i
 
 lb_inst:
 # OPCODE: 100000 => 1000/0000 = 0x80
 jal read_next_2bytes_express
 jal consume_whitespace
-lui $s0,0x80
+lui $s0,0x8000
 j tipo_i
 
 ########### END BRANCH L
@@ -517,7 +495,7 @@ j tipo_r
 mul_inst:
 # OPCODE: 011100 => 0111/0000 = 0x70
 # FUNCT: 000010 => 0000/0010 = 0x02
-lui $s0,0x70
+lui $s0,0x7000
 ori $s0,$s0,0x02
 j tipo_r
 
@@ -590,7 +568,7 @@ ori_inst:
 # OPCODE: 001101 => 0011/0100 = 0x34
 jal read_byte_express
 jal consume_whitespace
-lui $s0,0x34
+lui $s0,0x3400
 j tipo_i
 ########### END BRANCH 
 
@@ -646,27 +624,27 @@ j error_instruction_not_found
 sub_inst:
 # OPCODE: 0
 # FUNCT: 100010 => 0010/0010 = 0x22
-lui $s0,0x22
+lui $s0,0x2200
 j tipo_r
 
 slt_inst:
 # OPCODE: 0
 # FUNCT: 0010/1010 = 0x2A
-lui $s0,0x2A
+lui $s0,0x2A00
 j tipo_r
 
 subu_inst:
 # OPCODE: 0
 # FUNCT: 100011 => 0010/0011 = 0x23
 jal consume_whitespace
-lui $s0,0x23
+lui $s0,0x2300
 j tipo_r
 
 sllv_inst:
 # OPCODE: 0
 # FUNCT: 000100 => 0000/0100 = 0x04
 jal consume_whitespace
-lui $s0,0x04
+lui $s0,0x0400
 j tipo_r
 
 sll_inst:
@@ -698,14 +676,14 @@ sw_inst:
 # OPCODE: 101011 => 1010/1100 = 0xAC
 jal read_next_2bytes_express #incrementa o ponteiro sem carregar de fato os bytes
 jal consume_whitespace
-lui $s0,0xAC
+lui $s0,0xAC00
 j tipo_i
 
 sb_inst:
 # OPCODE: 101000 => 1010/0000 = 0xA0
 jal read_next_2bytes_express #incrementa o ponteiro sem carregar de fato os bytes
 jal consume_whitespace
-lui $s0,0xA0
+lui $s0,0xA000
 j tipo_i
 
 ########### END BRANCH S
@@ -736,7 +714,7 @@ j tipo_r
 xori_inst:
 # OPCODE: 001110 => 0011/1000 = 0x38
 jal consume_whitespace
-lui $s0,0x38
+lui $s0,0x3800
 j tipo_i
 
 ########### END BRANCH X
