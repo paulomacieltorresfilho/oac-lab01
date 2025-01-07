@@ -541,7 +541,7 @@ j tipo_r
 
 # Branch O
 # Or, ori
-o_read: #  _ _ _
+o_read: # o _ _ _
 jal read_next_2bytes
 
 addi $at,$zero,0x6F72 #"or"
@@ -552,10 +552,7 @@ jal read_byte_no_inc
 addi $at,$zero,0x20 #" "
 beq $t0,$at,or_inst
 
-jal read_next_2bytes_no_inc
-
-lui $at,0x6F72 #"or"
-ori $at,0x6920 #"i "
+addi $at,$zero,0x69 #"i"
 beq $t0,$at,ori_inst
 
 j error_instruction_not_found
@@ -579,7 +576,7 @@ j tipo_i
 
 # Branch S
 # Sub,slt,subu,sllv,sll,srl,srav,sra,sw,sb
-s_read: #  _ _ _
+s_read: # s _ _ _
 jal read_next_2bytes_no_inc
 
 addi $at,$zero,0x7362 #"sb"
@@ -704,7 +701,7 @@ beq $t0,$at,xor_inst
 
 lui $at,0x786F #"xo"
 ori $at,0x7269 #"ri"
-beq $t0,$at,xor_inst
+beq $t0,$at,xori_inst
 
 j error_instruction_not_found
 # INSTRUÇÔES COM X
@@ -731,13 +728,20 @@ j end
 tipo_r:
 jal read_register_operand
 add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
 jal consume_comma
 jal read_register_operand
 add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
 jal consume_comma
 jal read_register_operand
 add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
 
+or $s5,$zero,$s3
+or $s5,$s5,$s2
+or $s5,$s5,$s1
+or $s5,$s5,$s0
 j end
 
 tipo_r_shamt:
