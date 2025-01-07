@@ -84,7 +84,7 @@
 
 
 .data
-	instrucaoSemFormatacao: .asciiz "    addi          $ra ,      $rb  ,   0x1 "
+	instrucaoSemFormatacao: .asciiz "    addi          $ra    ,      $rb  ,   -0x1 "
 	instrucaoComFormatacao: .space 32
 	instrucaoParte1: .space 32
 	instrucaoParte2: .space 32
