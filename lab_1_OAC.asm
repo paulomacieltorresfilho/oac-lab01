@@ -776,6 +776,30 @@ j end
 ## Regra de negócio, apenas funções desse bloco alteram $a1
 
 #######################
+# PROCEDIMENTO consume_optional_whitespace
+# consome opcionalmente um espaço
+# Consome todos os whitespaces seguintes
+
+# Argumentos de entrada:
+# Registrador $a1: endereço do buffer
+
+# Retornos:
+# Espaço em $t0
+
+# Efeitos globais:
+# Incrementa $a1
+
+consume_optional_whitespace:
+lbu $t0, ($a1)
+repeat_optional_whitespace:
+bne $t0,' ', end_consume_optional_whitespace
+addi $a1,$a1,1
+lbu $t0, ($a1)
+beq $t0,' ', repeat_optional_whitespace
+end_consume_optional_whitespace:
+jr $ra
+
+#######################
 # PROCEDIMENTO consume_whitespace
 # consome obrigatoriamente um espaço, do contrário retorna erro
 # Consome todos os whitespaces seguintes
