@@ -729,11 +729,15 @@ tipo_r:
 jal read_register_operand
 add $s3,$zero,$t1 #rd
 sll $s3,$s3,11
+jal consume_optional_whitespace
 jal consume_comma
+jal consume_optional_whitespace
 jal read_register_operand
 add $s1,$zero,$t1 #rs
 sll $s1,$s1,21
+jal consume_optional_whitespace
 jal consume_comma
+jal consume_optional_whitespace
 jal read_register_operand
 add $s2,$zero,$t1 #rt
 sll $s2,$s2,16
