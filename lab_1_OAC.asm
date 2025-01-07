@@ -1,5 +1,5 @@
 .data  
-file: .asciiz "file2.asm"      # filename for input
+file: .asciiz "file2.a (osm"      # filename for input
 buffer_leitura: .space 1024
 buffer_escrita: .space 1024
 
@@ -40,30 +40,52 @@ comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 #		div $t1, $t2
 #		mfhi/mflo $t1
 
-
+#		Grupo 1
 #		clo $t1, $t2
 #		srav $t1, $t2, $t3
 #		sra $t2, $t1, 10
 #		movn $t1, $t2, $t3
 #		mul $t1, $t2, $t5
 
+#		Grupo 2
+#		sltu $t1, $t2, -100
+#		clo $t1, $t2
+#		clz $t1, $t2
+#		addu $t1, $t2, $t3
+#		divu $s1, $s2
+
+
+
 #     Tipo J (as j... menos jr)
 #		j LABEL
 #		jal LABEL
 
-#     Tipo I (o resto)
+#     Tipo I
 #		lw $t0, OFFSET($s3)
-#		addi/andi/ori/xori $t2, $t3, -10
-#		add $t0, $t2, 1000
+#		addi/andi/ori/xori $t2, $t3, -10   
+#		add $t0, $t2, 1000                 pseudo
 #		sw $t0, OFFSET($s3)
 #		beq/bne $t1, $zero, LABEL
-#		lui $t1, 0xXXXX
-#		lb $t1, 100($t2)
+#		lui $t1, 0xXXXX                   imm
+#		lb $t1, 100($t2)                  
 
+#		Grupo 1
 #		bgez $t1, LABEL
 #		addiu $t1, $t2, $t3
 #		bgezal $t1, LABEL
 #		sb $t4, 1000($t2)
+
+#		Grupo 2
+#		slti $t1, $t2, -100
+#		bltzal $t1, LABEL
+#		lhu $t1, -100($t2)
+#		bgezall $s2, LABEL
+#       cop2 func
+
+
+#     Formato próprio (debug)  
+#       deret
+
 # 3.2 lê operandos ($t0 ...)
 
 # 4.
