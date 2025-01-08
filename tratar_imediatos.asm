@@ -41,7 +41,7 @@
 	
 .end_macro
 
-.macro cortaImediato (%numeroVerificado,%ImediatoCortado)
+.macro cortaImediatoHexa (%numeroVerificado,%ImediatoCortado)
 	
 	Main:
 		move $t0,%numeroVerificado
@@ -82,18 +82,68 @@
 	Exit:
 		sb $zero,0($t1)
 		
-.end_macro		
+.end_macro
+
+.macro transformarImediatoHexa (%imediatoCortado,%imediatoTransformado)
+
+	Main:
+		move $t0,%imediatoCortado
+		move $t1,%imediatoTransformado
+		lb $t4, 0($t0)
+		li $t3, 0
+		addi $t0,$t0,1
+	Confere:
+		lb $t2,0($t0)
+		beqz $t2,ConferirNegativo
+		ble $t2,57,TransformaDecimal
+		ble $t2,70,TransformaMaiusculo
+		j TransformaMinusculo
+	TransformaDecimal:
+		li $t5,0
+		subi $t5,$t2,48
+		or $t3,$t5,$t3
+		j Intermediario
+	TransformaMaiusculo:
+		li $t5,0
+		subi $t5,$t2,55
+		or $t3,$t5,$t3
+		j Intermediario
+	TransformaMinusculo:
+		li $t5,0
+		subi $t5,$t2,87
+		or $t3,$t5,$t3
+		j Intermediario
+	Intermediario:
+		sll $t3,$t3,4
+		addi $t0,$t0,1
+		j Confere
+	ConferirNegativo:
+		beq $t4,49,ExtensaoSinal
+		ori $t3,0x0000
+		sw $t3,0($t1)
+		j Exit
+	ExtensaoSinal:
+		sll $t3, $t3, 16              # Expande os 16 bits
+        	sra $t3, $t3, 16              # Mantém o sinal
+		sw $t3,0($t1)
+	Exit:
+		move $v0,$t3
+		
+	
+.end_macro
 
 .data
-	Num1: .asciiz "0xA321AAAA"
-	Num2: .space 3000
+	Num1: .asciiz "10012"
+	.align 2
+	Num2: .space 50
 .text
 	la $a0,Num1
 	la $a1,Num2
-	cortaImediato $a0,$a1
+	transformarImediatoHexa $a0,$a1
 	la $a0,Num2
+	lw $a0,0($a0)
 	
-	li $v0,4
+	li $v0,1
 	syscall
 	
 
