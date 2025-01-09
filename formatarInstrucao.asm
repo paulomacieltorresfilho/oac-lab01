@@ -44,6 +44,7 @@
 		addi $t1,$t1,1
 		j PRIMEIRA_PARTE
 	SEGUNDA_PARTE_TRANSICAO:
+		sb $zero,0($t1)
 		addi $t1,$t1,1
 		addi $t0,$t0,1
 	SEGUNDA_PARTE:
@@ -55,6 +56,7 @@
 		addi $t2,$t2,1
 		j SEGUNDA_PARTE
 	TERCEIRA_PARTE_TRANSICAO:
+		sb $zero,0($t2)
 		addi $t2,$t2,1
 		addi $t0,$t0,3
 	TERCEIRA_PARTE:
@@ -66,6 +68,7 @@
 		addi $t3,$t3,1
 		j TERCEIRA_PARTE
 	QUARTA_PARTE_TRANSICAO:
+		sb $zero,0($t3)
 		addi $t3,$t3,1
 		addi $t0,$t0,3
 	QUARTA_PARTE:
@@ -76,6 +79,7 @@
 		addi $t4,$t4,1
 		j QUARTA_PARTE
 	EXIT:
+		sb $zero,0($t4)
 		add $t1,$t1,$zero
 		add $t2,$t2,$zero
 		add $t3,$t3,$zero
@@ -84,7 +88,7 @@
 
 
 .data
-	instrucaoSemFormatacao: .asciiz "    addi          $ra    ,      $rb  ,   -0x1 "
+	instrucaoSemFormatacao: .asciiz "    addi          $ra    ,      $rb "
 	instrucaoComFormatacao: .space 32
 	instrucaoParte1: .space 32
 	instrucaoParte2: .space 32
@@ -105,6 +109,14 @@
 	
 	dividirInstrucao $s2,$s3,$s4,$s5,$s6
 	
+	Loop1:
+	
+		lb $t1,0($s4)
+		beqz $t1,loop2
+		addi $s4,$s4,1
+		j Loop1
+		
+	loop2:
 	la $a0,instrucaoComFormatacao
 	li $v0,4
 	syscall
