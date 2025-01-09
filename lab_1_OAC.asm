@@ -1,20 +1,32 @@
+# Variáveis globais
+# $a3 guarda o número da linha do código
+
 .data  
 file: .asciiz "file2.asm"      # filename for input
+.align 2
+buffer_instrucoes: .space 1024 # armazena instrução em 4 bytes
 buffer_leitura: .space 1024
-buffer_escrita: .space 1024
 
+
+
+mif_data: .space 1024
+mif_text: .space 1024
+.align 2
+tabela_label_endereco: .word 100 # formato 4 words para endereço e 1 word para label
+tabela_pendencias: .word 100     # formato 4 words para endereço e 1 word para label
 
 text_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 data_not_found: .asciiz ".data NÃO encontrado no arquivo.\n"
 
-comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
+comma_not_found: .asciiz "comma NÃO encontrada no arquivo.\n"
+whitespace_not_found: .asciiz "whitespace NÃO encontrado no arquivo.\n"
 
 .text
 #####################
 # 1. IO -> lê e fecha arquivo
 # 2. Acha .data e aloca memória
 # 3. Acha .text e loop comandos
-# 3.0 Lê o arquivo todo e salva os labels e seus respectivos endereços
+# 3.0 Lê a linha e salva a label em tabela_label_endereco 4 words para a label e 1 word para número da instrução
 # 3.1 Lê a primeira letra
 # 3.1.1 Pula para a árvore respectiva
 # 3.2 Lê operandos
@@ -25,6 +37,8 @@ comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 # s2 contém rt
 # s3 contém rd
 # s4 contém shamt
+# s5 armazena o resultado da instrução
+# s6 armazena o número da instrução
 
 #s7 é o contador de linha de programa
 
@@ -39,7 +53,6 @@ comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 #		mult $t1, $t2
 #		div $t1, $t2
 #		mfhi/mflo $t1
-
 
 #		Grupo 1
 #		clo $t1, $t2
@@ -61,6 +74,8 @@ comma_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 
 #     Tipo I
 #		lw $t0, OFFSET($s3)
+#		addi/andi/ori/xori $t2, $t3, -10   
+#		add $t0, $t2, 1000                 pseudo
 #		addi/andi/ori/xori $t2, $t3, -10   
 #		add $t0, $t2, 1000                 pseudo
 #		sw $t0, OFFSET($s3)
@@ -146,7 +161,7 @@ find_text:
 jal read_next_4bytes
 lui $at,0x7465 #"te"
 ori $at,0x7874 #"xt"
-beq $t0,$at, loop_instruction
+beq $t0,$at, instruction_section
 
 j error_text_not_found
 
@@ -154,22 +169,28 @@ error_text_not_found:
 addi $t2,$zero,499
 j end
 
-
-
+instruction_section:
+# contador de instrução começa em -1 ($s6 <- -1)
+addi $s6,$zero,-1 
 loop_instruction:
 # lógica de gerenciamento da memória
 # achar todas as labels '\n' (...) ':'
 # primeiro achar os 2 pontos, em seguida ir voltando 
-
+jal read_byte_no_inc
+beq $t0,0,end
+addiu $s6,$s6,1
 jal consume_newline
 
+jal search_label
+
+jal consume_optional_whitespace
 
 read_instruction:
 # Primeira letra pode ser a,b,c,d,j,l,m,n,o,s,x
 jal read_byte_no_inc
 #check _ _ _ _ 
 
-
+beq $t0, 0, solve_pendencies
 
 beq $t0, 'a', a_read
 beq $t0, 'b', b_read
@@ -214,10 +235,10 @@ bne $t0,$at,error_instruction_not_found
 
 jal read_byte_no_inc
 
-addi $at,$zero,0x20
+addi $at,$zero,0x20 #" "
 beq $t0,$at,addi_inst
 
-addi $at,$zero,0x75
+addi $at,$zero,0x75 #"u"
 beq $t0,$at,addiu_inst
 
 j error_instruction_not_found
@@ -765,7 +786,7 @@ or $s5,$zero,$s3
 or $s5,$s5,$s2
 or $s5,$s5,$s1
 or $s5,$s5,$s0
-j end
+j store_instruction
 
 tipo_r_shamt:
 jal read_register_operand
@@ -778,7 +799,7 @@ jal consume_comma
 
 tipo_r_onlydestiny:
 jal read_register_operand
-j end
+j store_instruction
 
 tipo_i:
 jal read_register_operand
@@ -789,12 +810,21 @@ add $s1,$zero,$t1 #rs
 jal consume_comma
 jal read_imm_operand
 
-j end
+
+
+j store_instruction
 
 tipo_j:
 
-j end
+j store_instruction
 
+store_instruction:
+addi $t3,$zero,4
+mul $t2,$s6,$t3
+sw $s5,buffer_instrucoes($t2)
+# incrementa contador de instrução
+
+j loop_instruction
 ## Funções uso repetido
 ## Regra de negócio, apenas funções desse bloco alteram $a1
 
@@ -1139,7 +1169,7 @@ addi $t1,$zero,1
 j read_register_operand_end
 
 register_a_number:
-addi $t1,$zero,4 #a0 corresponde a 4
+addi $t1,$zero,20 #a0 corresponde a 4
 add $t1,$t1,$t0 #offset
 
 j read_register_operand_end
@@ -1151,7 +1181,7 @@ jal read_byte_express
 jal read_byte
 addi $t0,$t0,-0x30 #transforma em número
 
-addi $at,$zero,1 #an com 0<=n<=1
+addi $at,$zero,1 #vn com 0<=n<=1
 bleu $t0,$at,register_v_number
 
 j error_register_number
@@ -1169,10 +1199,10 @@ jal read_byte_express
 jal read_byte
 addi $t0,$t0,-0x30 #transforma em int
 
-addi $at,$zero,7 #at=1
+addi $at,$zero,7 #tn 0<=n<=7
 bleu $t0,$at,register_t_number_upto_7
 
-addi $at,$zero,9 #at=1
+addi $at,$zero,9 #tn n<=9
 bleu $t0,$at,register_t_number_upto9
 
 j error_register_number
@@ -1282,6 +1312,65 @@ error_read_imm:
 addi $t2,$zero,507
 j end
 
+####################
+jr $ra
+# PROCEDIMENTO SEARCH LABEL
+# Itera pela linha e procura uma label
+# Caso 1: encontra um ":" significa que o que vem antes é uma label, que será armazenada
+# em tabela label endereco
+# Em seguida, o restante da instrução é processado
+# Caso 2: lê-se um \r\n sem que seja lida um ":". Significa que não há a label naquela linha
+# o contador de linha volta para o começo da linha e a instrução é processada
+
+search_label:
+addi $sp,$sp,-4
+sw $ra,($sp)
+
+add $t1,$zero,$zero #contador de qual coluna na linha
+loop_search_label:
+lbu $t0,($a1) #carrega caracter em $t0
+
+addi $at,$zero,0x3A # ":" adiciona em $at ":"
+beq $t0,$at,found_colon # caso seja o :, fazer procedimentos de salvar a label
+
+addi $at,$zero,'\r' #return carriage significa que a linha acabou
+beq $t0,$at,found_end_of_line # ir para found_newline e termina a rotina
+beq $t0,0,found_end_of_line # ir para found_newline e termina a rotina
+
+addi $a1,$a1,1
+addi $t1,$t1,1 #incrementa coluna
+j loop_search_label #volta para loop search até que uma das condições de saída ser atendida
+
+
+found_colon:
+# subtrai de $a2 o número de caracteres lidos 
+sub $a1,$a1,$t1
+add $t2,$zero,$zero
+label_save_loop:
+lbu $t0,($a1) #carrega caracter em $t0
+addi $a1,$a1,1 
+addi $at,$zero,0x3A # ":" adiciona em $at ":"
+beq $t0,$at,end_save_label
+sb $t0,tabela_label_endereco($t2)
+addi $t2,$t2,1
+j label_save_loop
+
+found_end_of_line:
+sub $a1,$a1,$t1
+j end_search_label
+
+end_save_label:
+sw $s6,tabela_label_endereco+16
+addi $a1,$a1,1 
+
+end_search_label:
+lw $ra,($sp)
+addi $sp,$sp,4
+jr $ra
+## FIM
 
 end:
-## FIM
+
+solve_pendencies:
+
+
