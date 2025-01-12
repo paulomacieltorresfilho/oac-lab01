@@ -4,16 +4,18 @@
 .data  
 file: .asciiz "file2.asm"      # filename for input
 .align 2
-buffer_instrucoes: .space 1024 # armazena instrução em 4 bytes
+buffer_instrucoes: .space 40 # armazena instrução em 4 bytes
+tabela_label_endereco: .space 80 #formato 4 words para endereço e 1 word para label cada um tem 20 bytes 
+
+
 buffer_leitura: .space 1024
 
-
+tabela_pendencias: .word 100     # formato 4 words para endereço e 1 word para label
 
 mif_data: .space 1024
 mif_text: .space 1024
-.align 2
-tabela_label_endereco: .word 100 # formato 4 words para endereço e 1 word para label
-tabela_pendencias: .word 100     # formato 4 words para endereço e 1 word para label
+
+
 
 text_not_found: .asciiz ".text NÃO encontrado no arquivo.\n"
 data_not_found: .asciiz ".data NÃO encontrado no arquivo.\n"
@@ -35,24 +37,26 @@ whitespace_not_found: .asciiz "whitespace NÃO encontrado no arquivo.\n"
 # s0 contém o Opcode e funct
 # s1 contém rs
 # s2 contém rt
-# s3 contém rd
+# s3 contém rd ou o imediato
 # s4 contém shamt
 # s5 armazena o resultado da instrução
 # s6 armazena o número da instrução
+# s7 armazena o número de labels salvas
 
 #s7 é o contador de linha de programa
 
 #     Tipo R (operandos são registradores)
-#		add/sub/and/or/nor/xor $t0, $s2, $t0
-#		jr $t0
-#		jalr $t1
-#		slt $t1, $t2, $t3
-#		addu/subu $t1, $t2, $t3
-#		sllv $t1, $t2, $t3
+#1/2		add $t0, $s2, 1000/$t0
+#ok		sub/and/or/nor/xor $t0, $s2, $t0
+#ok		jr $t0
+#ok		jalr $t1
+#ok		slt $t1, $t2, $t3
+#ok		addu/subu $t1, $t2, $t3
+#ok		sllv $t1, $t2, $t3
 #		sll/srl $t2, $t3, 10               caso diferente, shift ammount
-#		mult $t1, $t2
-#		div $t1, $t2
-#		mfhi/mflo $t1
+#ok		mult $t1, $t2
+#ok		div $t1, $t2
+#ok		mfhi/mflo $t1
 
 #		Grupo 1
 #		clo $t1, $t2
@@ -63,10 +67,10 @@ whitespace_not_found: .asciiz "whitespace NÃO encontrado no arquivo.\n"
 
 #		Grupo 2
 #		sltu $t1, $t2, -100
-#		clo $t1, $t2
-#		clz $t1, $t2
-#		addu $t1, $t2, $t3
-#		divu $s1, $s2
+#ok		clo $t1, $t2
+#ok		clz $t1, $t2
+#1/2		addu $t1, $t2, 4/$t3
+#ok		divu $s1, $s2
 
 #     Tipo J (as j... menos jr)
 #		j LABEL
@@ -114,7 +118,7 @@ move $s6, $v0      # save the file descriptor
 li   $v0, 14       # system call for read from file
 move $a0, $s6      # file descriptor 
 la   $a1, buffer_leitura   # address of buffer to which to read
-li   $a2, 1024     # hardcoded buffer length
+li   $a2,1024  #hardcoded buffer length
 syscall            # read from file
 # Close the file
 li   $v0, 16       # system call for close file
@@ -183,6 +187,8 @@ jal consume_newline
 
 jal search_label
 
+jal consume_optional_newline
+
 jal consume_optional_whitespace
 
 read_instruction:
@@ -208,7 +214,7 @@ j error_instruction_not_found
 
 ########
 # Branch A
-# Add,and,addu,addi,andi,addiu
+# Add,and,addu,addi,andi
 a_read: # a _ _ _
 jal read_next_4bytes
 
@@ -238,8 +244,8 @@ jal read_byte_no_inc
 addi $at,$zero,0x20 #" "
 beq $t0,$at,addi_inst
 
-addi $at,$zero,0x75 #"u"
-beq $t0,$at,addiu_inst
+#addi $at,$zero,0x75 #"u"
+#beq $t0,$at,addiu_inst
 
 j error_instruction_not_found
 
@@ -248,8 +254,8 @@ j error_instruction_not_found
 add_inst:
 # OPCODE: 0
 # FUNCT: 100000 => 0010/0000 = 0x20
-addi $s0,$zero,0x20
-j tipo_r
+#addi $s0,$zero,0x20 opcode decidido depois
+j tipo_r_ou_i_add
 
 and_inst:
 # OPCODE: 0
@@ -261,14 +267,14 @@ addu_inst:
 # OPCODE: 0
 # FUNCT: 100001 => b0010/0001= 0x21
 jal consume_whitespace
-addi $s0,$zero,0x21
-j tipo_r
+#addi $s0,$zero,0x21 opcode decidido depois
+j tipo_r_ou_i_addu
 
 addi_inst:
 # OPCODE: 001000 => 0010/0000 = 0x20
 jal consume_whitespace
 lui $s0, 0x2000
-#addi $s0,$zero,0x08
+addi $s0,$zero,0x08
 #sll $s0,$s0,26
 j tipo_i
 
@@ -278,12 +284,12 @@ jal consume_whitespace
 lui $s0, 0x3000
 j tipo_i
 
-addiu_inst:
+#addiu_inst:
 # OPCODE: 001001 => 0010/0100
-jal read_byte_express #incrementa o ponteiro sem carregar de fato o byte
-jal consume_whitespace
-lui $s0,0x2400
-j tipo_i
+#jal read_byte_express #incrementa o ponteiro sem carregar de fato o byte
+#jal consume_whitespace
+#lui $s0,0x2400
+#j tipo_i
 
 
 ########### END BRANCH A
@@ -319,12 +325,12 @@ j error_instruction_not_found
 beq_inst:
 # OPCODE: 000100 => 0001/0000  = 0x10
 lui $s0,0x1000
-j tipo_i
+j tipo_i_branch
 
 bne_inst:
 # OPCODE: 000101 => 0001/0100 = 0x14
 lui $s0,0x1400
-j tipo_i
+j tipo_i_branch
 
 
 bgez_inst:
@@ -362,6 +368,10 @@ lui $at,0x636C#"cl"
 ori $at,0x6F20#"o "
 beq $t0,$at,clo_inst
 
+lui $at,0x636C#"cl"
+ori $at,0x7A20#"z "
+beq $t0,$at,clz_inst
+
 j error_instruction_not_found
 
 # INSTRUÇÔES COM c
@@ -371,7 +381,15 @@ clo_inst:
 # FUNCT: 100001 => 0010/0001 => 0x21
 lui $s0,0x7000
 ori $s0,$s0,0x21
-j tipo_r
+j tipo_r_clo_clz
+
+clz_inst:
+# OPCODE: 011100 => 0111/0000 => 0x70
+# SHAMT: 0
+# FUNCT: 100000 => 0010/0000 => 0x20
+lui $s0,0x7000
+ori $s0,$s0,0x20
+j tipo_r_clo_clz
 ########### END BRANCH C
 
 ########
@@ -385,12 +403,23 @@ lui $at,0x6469 #"di"
 ori $at,0x7620 #"v "
 beq $t0,$at,div_inst
 
+lui $at,0x6469 #"di"
+ori $at,0x7675 #"vu"
+beq $t0,$at,divu_inst
+
 # INSTRUÇÔES COM D
 div_inst:
 # OPCODE: 0
 # FUNCT: 011010 => 0001/1010 = 0x1A
 addi $s0,$zero,0x1A
-j tipo_r
+j tipo_r_two_operands
+
+divu_inst:
+# OPCODE: 0
+# FUNCT: 011011 => 0001/1011 = 0x1B
+jal consume_whitespace
+addi $s0,$zero,0x1B
+j tipo_r_two_operands
 
 ########### END BRANCH D
 
@@ -419,11 +448,11 @@ beq $t0,$at,jalr_inst
 j error_instruction_not_found
 # INSTRUÇÔES COM J
 # OPCODE: 0
-# FUNCT: 010000 => 0001/0000 = 0x10
+# FUNCT: 01000 => 0000/1000 = 0x08
 jr_inst:
 jal read_next_2bytes_express
-addi $s0,$zero,0x10
-j tipo_r
+addi $s0,$zero,0x08
+j tipo_r_onlydestiny_rs
 
 
 jalr_inst:
@@ -431,7 +460,13 @@ jalr_inst:
 # FUNCT: 001001 => 0000/1001 = 0x09
 jal consume_whitespace
 addi $s0,$zero,0x09
-j tipo_r
+# rd = 31
+# 0xXXXX XXXX
+# 0x 0001 1111
+addi $s3,$zero,31
+sll $s3,$s3,11
+or $s0,$s0,$s3
+j tipo_r_onlydestiny_rs
 
 j_inst:
 # OPCODE: 000010 => 0000/1000 = 0x08
@@ -499,13 +534,13 @@ lui $at,0x6D75 #"mu"
 ori $at,0x6C74 #"lt"
 beq $t0,$at,mult_inst
 
-lui $at,0x6D6F #"mo"
-ori $at,0x766E #"vn"
-beq $t0,$at,movn_inst
+#lui $at,0x6D6F #"mo"
+#ori $at,0x766E #"vn"
+#beq $t0,$at,movn_inst
 
-lui $at,0x6D75 #"mu"
-ori $at,0x6C20 #"l "
-beq $t0,$at,mul_inst
+#lui $at,0x6D75 #"mu"
+#ori $at,0x6C20 #"l "
+#beq $t0,$at,mul_inst
  
 
 lui $at,0x6D66 #"mf"
@@ -523,35 +558,35 @@ mult_inst:
 # FUNCT: 011000 => 0001/1000 = 0x18
 jal consume_whitespace
 addi $s0,$zero,0
-j tipo_r
+j tipo_r_two_operands
 
-movn_inst:
+#movn_inst:
 # OPCODE: 0
 # FUNCT: 001011 => 0000/1011 = 0x0B
-jal consume_whitespace
-addi $s0,$zero,0x0B
-j tipo_r
+#jal consume_whitespace
+#addi $s0,$zero,0x0B
+#j tipo_r
 
-mul_inst:
+#mul_inst:
 # OPCODE: 011100 => 0111/0000 = 0x70
 # FUNCT: 000010 => 0000/0010 = 0x02
-lui $s0,0x7000
-ori $s0,$s0,0x02
-j tipo_r
+#lui $s0,0x7000
+#ori $s0,$s0,0x02
+#j tipo_r
 
 mfhi_inst:
 # OPCODE: 0
 # FUNCT: 010000 => 0001/0000 = 0x10
 jal consume_whitespace
 addi $s0,$zero,0x10
-j tipo_r_onlydestiny
+j tipo_r_onlydestiny_rd
 
 mflo_inst:
 # OPCODE: 0
 # FUNCT: 010010 => 0001/0010 = 0x12
 jal consume_whitespace
 addi $s0,$zero,0x12
-j tipo_r_onlydestiny
+j tipo_r_onlydestiny_rd
 
 ########### END BRANCH M
 
@@ -651,13 +686,13 @@ lui $at,0x7372 #"sr"
 ori $at,0x6C20 #"l "
 beq $t0,$at,srl_inst
 
-lui $at,0x7372 #"sr"
-ori $at,0x6176 #"av"
-beq $t0,$at,srav_inst
+#lui $at,0x7372 #"sr"
+#ori $at,0x6176 #"av"
+#beq $t0,$at,srav_inst
 
-lui $at,0x7372 #"sr"
-ori $at,0x6176 #"a "
-beq $t0,$at,sra_inst
+#lui $at,0x7372 #"sr"
+#ori $at,0x6176 #"a "
+#beq $t0,$at,sra_inst
 
 j error_instruction_not_found
 # INSTRUÇÔES COM S
@@ -699,18 +734,18 @@ srl_inst:
 addi $s0,$zero,0x02
 j tipo_r
 
-srav_inst:
+#srav_inst:
 # OPCODE: 0
 # FUNCT: 000111 => 0000/0111 = 0x07
-jal consume_whitespace
-addi $s0,$zero,0x07
-j tipo_r
+#jal consume_whitespace
+#addi $s0,$zero,0x07
+#j tipo_r
 
-sra_inst:
+#sra_inst:
 # OPCODE: 0
 # FUNCT: 000011 => 0000/0011 = 0x03
-addi $s0,$zero,0x03
-j tipo_r
+#addi $s0,$zero,0x03
+#j tipo_r
 
 sw_inst:
 # OPCODE: 101011 => 1010/1100 = 0xAC
@@ -786,44 +821,235 @@ or $s5,$zero,$s3
 or $s5,$s5,$s2
 or $s5,$s5,$s1
 or $s5,$s5,$s0
-j store_instruction
+jal store_instruction
+j end_read_instruction
+
+
+tipo_r_clo_clz:
+# rd e rt devem ser iguais
+jal read_register_operand
+add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
+
+or $s5,$zero,$s3
+or $s5,$s5,$s2
+or $s5,$s5,$s1
+or $s5,$s5,$s0
+jal store_instruction
+j end_read_instruction
+
+tipo_r_two_operands:
+# rd e rt devem ser iguais
+jal read_register_operand
+add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
+
+
+
+or $s5,$zero,$s2
+or $s5,$s5,$s1
+or $s5,$s5,$s0
+jal store_instruction
+j end_read_instruction
 
 tipo_r_shamt:
 jal read_register_operand
 add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
+jal consume_optional_whitespace
 jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16 
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+#jal load_shift
+#add $s2,$zero,$t1 #rt
+
+or $s5,$zero,$s3 #rd
+or $s5,$s5,$s2 #rt
+#or $s5,$s5,$s2 #rt
+or $s5,$s5,$s0 #opcode
+jal store_instruction
+
+jal store_instruction
+j end_read_instruction
+
+tipo_r_onlydestiny_rs:
 jal read_register_operand
 add $s1,$zero,$t1 #rs
-jal consume_comma
-#jal load_shift
+sll $s1,$s1,21
+or $s5,$s5,$s1
+or $s5,$s5,$s0
+jal store_instruction
+j end_read_instruction
 
-tipo_r_onlydestiny:
+tipo_r_onlydestiny_rd:
 jal read_register_operand
-j store_instruction
+add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
+
+or $s5,$zero,$s3 #rd
+or $s5,$s5,$s0
+jal store_instruction
+j end_read_instruction
+
+
+tipo_r_ou_i_add:
+### Possibilidades
+# add $t1,$t2,$t2
+# add $t1,$t2,imm
+# (pseudo)add $t1,$t2,0xXXXX
+#  real   addi $t1,$t2,0xXXXX
+# (pseudo)add $t1,$t2,0xABCD EF12
+#  real   lui $at,$zero,0xABCD
+#         ori $at,$at,0xEF12
+
+jal read_register_operand
+add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+lbu $t0,($a1)
+bne $t0,'$', imm_add_operand
+
+jal read_register_operand
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
+
+addi $s0,$zero,0x20 
+
+or $s5,$s5,$s2
+or $s5,$s5,$s1
+or $s5,$s5,$s0
+
+jal store_instruction
+j end_r_ou_i
+
+imm_add_operand:
+jal read_imm_operand
+addi $s0,$zero,0x21
+
+jal store_instruction
+j end_read_instruction
+
+tipo_r_ou_i_addu:
+### Possibilidades
+# addu $t1,$t2,$t2
+# addu $t1,$t2,imm
+# (pseudo)addu $t1,$t2,0xXXXX
+#  real   lui $at,$zero,0x0000
+# (pseudo)add $t1,$t2,0xABCD EF12
+#  real   lui $at,$zero,0xABCD
+#         ori $at,$at,0xEF12
+#         addu $t1,$t2,$at
+jal read_register_operand
+add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+lbu $t0,($a1)
+bne $t0,'$', imm_addu_operand
+
+jal read_register_operand
+
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
+addi $s0,$zero,0x21
+
+or $s5,$s5,$s2
+or $s5,$s5,$s1
+or $s5,$s5,$s0
+jal store_instruction
+j end_r_ou_i
+
+imm_addu_operand:
+jal read_imm_operand
+
+jal store_instruction
+j end_r_ou_i
+
+
+end_r_ou_i:
+j end_read_instruction
 
 tipo_i:
 jal read_register_operand
 add $s3,$zero,$t1 #rd
+sll $s3,$s3,11
 jal consume_comma
 jal read_register_operand
 add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
 jal consume_comma
 jal read_imm_operand
+jal store_instruction
+j end_read_instruction
+
+tipo_i_branch:
+jal read_register_operand
+add $s1,$zero,$t1 #rs
+sll $s1,$s1,21
+jal consume_optional_whitespace
+jal consume_comma
+jal consume_optional_whitespace
+jal read_register_operand
+add $s2,$zero,$t1 #rt
+sll $s2,$s2,16
+#jal save_pendency_label
 
 
-
-j store_instruction
+or $s5,$s5,$s2 #rt
+or $s5,$s5,$s1 #rs
+or $s5,$s5,$s0
+jal store_instruction
+j end_read_instruction
 
 tipo_j:
 
-j store_instruction
+jal store_instruction
+j end_read_instruction
 
 store_instruction:
 addi $t3,$zero,4
 mul $t2,$s6,$t3
 sw $s5,buffer_instrucoes($t2)
 # incrementa contador de instrução
+jr $ra
 
+
+
+end_read_instruction:
 j loop_instruction
 ## Funções uso repetido
 ## Regra de negócio, apenas funções desse bloco alteram $a1
@@ -850,6 +1076,7 @@ addi $a1,$a1,1
 lbu $t0, ($a1)
 beq $t0,' ', repeat_optional_whitespace
 end_consume_optional_whitespace:
+add $v0,$zero,$t0
 jr $ra
 
 #######################
@@ -873,6 +1100,7 @@ addi $a1,$a1,1
 bne $t0,' ', error_whitespace
 lbu $t0, ($a1)
 beq $t0,' ', repeat_whitespace
+add $v0,$zero,$t0
 jr $ra
 
 error_whitespace:
@@ -902,7 +1130,8 @@ lbu $t0, ($a1)
 repeat_newline:
 addi $a1,$a1,1
 beq $t0,'\r', consume_newline_n
-j error_newline_r
+beq $t0,'\n',consume_newline_unix
+j error_newline_not_found
 
 
 consume_newline_n:
@@ -911,15 +1140,72 @@ addi $a1,$a1,1
 bne $t0,'\n', error_newline_n
 lbu $t0, ($a1)
 beq $t0,'\r', repeat_newline
+j end_consume_newline
+
+consume_newline_unix:
+lbu $t0, ($a1)
+addi $a1,$a1,1
+beq $t0,'\n', consume_newline_unix
+j end_consume_newline
+
+end_consume_newline:
 jr $ra
 
-error_newline_r:
+error_newline_not_found:
 addi $t2,$zero,500
 j end
 
 error_newline_n:
 addi $t2,$zero,501
 j end
+#####################################
+#######################
+# PROCEDIMENTO consume_optional_newline
+# consome opcionalmente uma quebra de linha
+
+# No windows, newlines são composto de um \r seguido de um \n
+# Em UNIX, newlines são composto por \n
+
+# Consome todos os newlines seguintes
+# Argumentos de entrada:
+# Registrador $a1: endereço do buffer
+
+# Registradores utilizados:
+# $t0,$a1
+
+# Efeitos globais:
+# Incrementa $a1
+
+consume_optional_newline:
+lbu $t0, ($a1)
+repeat_optional_newline:
+beq $t0,'\r', consume_optional_newline_n
+beq $t0,'\n',consume_newline_unix
+j end_consume_newline
+
+
+consume_optional_newline_n:
+addi $a1,$a1,1
+lbu $t0, ($a1)
+addi $a1,$a1,1
+bne $t0,'\n', error_optional_newline_n
+lbu $t0, ($a1)
+beq $t0,'\r', repeat_optional_newline
+j end_consume_optional_newline
+
+consume_optional_newline_unix:
+lbu $t0, ($a1)
+addi $a1,$a1,1
+beq $t0,'\n', consume_optional_newline_unix
+j end_consume_optional_newline
+
+end_consume_optional_newline:
+jr $ra
+
+error_optional_newline_n:
+addi $t2,$zero,505
+
+
 #######################
 # PROCEDIMENTO consume_comma
 # consome obrigatoriamente uma vírgula, do contrário retorna erro
@@ -966,6 +1252,7 @@ read_byte:
 lbu $t0, ($a1)
 read_byte_express:       
 addi $a1,$a1,1
+add $v0,$zero,$t0
 jr $ra
 
 #######################
@@ -990,8 +1277,10 @@ sll $t0,$t0,8
 
 lbu $t1,1($a1)
 or $t0,$t0,$t1 
+add $v0,$zero,$t0
 read_next_2bytes_express:
 addi $a1,$a1,2
+
 
 jr $ra
 
@@ -1030,8 +1319,10 @@ or $t0,$t0,$t1
 
 lbu $t1,3($a1)
 or $t0,$t0,$t1 
+add $v0,$zero,$t0
 
 addi $a1,$a1,4
+
 
 jr $ra
 
@@ -1077,6 +1368,7 @@ j end
 
 read_byte_no_inc:
 lbu $t0, ($a1)
+add $v0,$zero,$t0
 jr $ra
 
 # PROCEDIMENTO read_next_2bytes_no_inc
@@ -1093,11 +1385,12 @@ jr $ra
 # Efeitos globais:
 # Modifica $t0,$a1,$t1
 read_next_2bytes_no_inc:
-lbu $t1,($a1)
-sll $t1,$t1,8
+lbu $t0,($a1)
+sll $t0,$t0,8
 
 lbu $t1,1($a1)
 or $t0,$t0,$t1 
+add $v0,$zero,$t0
 jr $ra
 ############ termina bloco que altera o $a1
 ############
@@ -1248,6 +1541,7 @@ add  $t1,$zero,$t0
 lbu $t0,($a1)
 beq $t0,',',only_number_compare
 beq $t0,'\r',only_number_compare
+beq $t0,'\n',only_number_compare
 beq $t0,' ',only_number_compare
 beq $t0,0,only_number_compare
 
@@ -1333,25 +1627,33 @@ lbu $t0,($a1) #carrega caracter em $t0
 addi $at,$zero,0x3A # ":" adiciona em $at ":"
 beq $t0,$at,found_colon # caso seja o :, fazer procedimentos de salvar a label
 
-addi $at,$zero,'\r' #return carriage significa que a linha acabou
-beq $t0,$at,found_end_of_line # ir para found_newline e termina a rotina
 beq $t0,0,found_end_of_line # ir para found_newline e termina a rotina
 
-addi $a1,$a1,1
+addi $at,$zero,'\n' #return carriage significa que a linha acabou
+beq $t0,$at,found_end_of_line # ir para found_newline e termina a rotina
+
+addi $at,$zero,'\r' #return carriage significa que a linha acabou
+beq $t0,$at,found_end_of_line # ir para found_newline e termina a rotina
+
+beq $t0,0,found_end_of_line # ir para found_newline e termina a rotina
+
+addi $a1,$a1,1 #incrementa o byte do buffer
 addi $t1,$t1,1 #incrementa coluna
 j loop_search_label #volta para loop search até que uma das condições de saída ser atendida
 
 
 found_colon:
 # subtrai de $a2 o número de caracteres lidos 
-sub $a1,$a1,$t1
-add $t2,$zero,$zero
+sub $a1,$a1,$t1 #retorna o ponteiro para o começo da linha
+mul $t3,$s7,20 #o começo dos endereços para salvar é 
+la $t2, tabela_label_endereco  #armazena o endereço da tabela em $t2
+add $t2,$t2,$t3 #desloca o $t2
 label_save_loop:
 lbu $t0,($a1) #carrega caracter em $t0
 addi $a1,$a1,1 
 addi $at,$zero,0x3A # ":" adiciona em $at ":"
 beq $t0,$at,end_save_label
-sb $t0,tabela_label_endereco($t2)
+sb $t0,($t2)
 addi $t2,$t2,1
 j label_save_loop
 
@@ -1360,8 +1662,11 @@ sub $a1,$a1,$t1
 j end_search_label
 
 end_save_label:
-sw $s6,tabela_label_endereco+16
-addi $a1,$a1,1 
+addi $t3,$zero,20
+mul $t3,$s7,$t3
+addi $t3,$t3,16
+sw $s6,tabela_label_endereco($t3) #salva o numero da linha atual em 16 deslocado de tabela_label_endereço($s7*20+16)
+addi $s7,$s7,1 #incrementa a quantidade de labels salvas
 
 end_search_label:
 lw $ra,($sp)
