@@ -39,12 +39,8 @@ whitespace_not_found: .asciiz "whitespace NÃO encontrado no arquivo."
 # 3.2 Lê operandos
 
 # Lógica dos registradores:
-# s0 contém o Opcode e funct
-# s1 contém rs
-# s2 contém rt
-# s3 contém rd ou o imediato
-# s4 contém shamt
-# s5 armazena o resultado da instrução
+# s0 onde é montada a instrução
+
 # s6 armazena o ordinal da instrução
 # s7 armazena o número de labels salvas
 
@@ -259,7 +255,7 @@ j error_instruction_not_found
 add_inst:
 # OPCODE: 0
 # FUNCT: 100000 => 0010/0000 = 0x20
-#addi $s0,$zero,0x20 opcode decidido depois
+add $s0,$zero,$zero #opcode decidido depois
 j tipo_r_ou_i_add
 
 and_inst:
@@ -272,7 +268,7 @@ addu_inst:
 # OPCODE: 0
 # FUNCT: 100001 => b0010/0001= 0x21
 jal consume_whitespace
-#addi $s0,$zero,0x21 opcode decidido depois
+add $s0,$zero,$zero #opcode decidido depois
 j tipo_r_ou_i_addu
 
 addi_inst:
@@ -466,9 +462,9 @@ addi $s0,$zero,0x09
 # rd = 31
 # 0xXXXX XXXX
 # 0x 0001 1111
-addi $s3,$zero,31
-sll $s3,$s3,11
-or $s0,$s0,$s3
+addi $t0,$zero,31
+sll $t0,$t0,11
+or $s0,$s0,$t0
 j tipo_r_onlydestiny_rs
 
 j_inst:
@@ -805,25 +801,25 @@ j end
 ### Verifica operandos das funções
 tipo_r:
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
 
-or $s5,$zero,$s3
-or $s5,$s5,$s2
-or $s5,$s5,$s1
-or $s5,$s5,$s0
+
 jal store_instruction
 j end_read_instruction
 
@@ -831,64 +827,60 @@ j end_read_instruction
 tipo_r_clo_clz:
 # rd e rt devem ser iguais
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 
-or $s5,$zero,$s3
-or $s5,$s5,$s2
-or $s5,$s5,$s1
-or $s5,$s5,$s0
 jal store_instruction
 j end_read_instruction
 
 tipo_r_two_operands:
 # rd e rt devem ser iguais
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
 
 
-
-or $s5,$zero,$s2
-or $s5,$s5,$s1
-or $s5,$s5,$s0
 jal store_instruction
 j end_read_instruction
 
 tipo_r_shamt:
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16 
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16 
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 #jal load_shift
 #add $s2,$zero,$t1 #rt
 
-or $s5,$zero,$s3 #rd
-or $s5,$s5,$s2 #rt
-#or $s5,$s5,$s2 #rt
-or $s5,$s5,$s0 #opcode
+
 jal store_instruction
 
 jal store_instruction
@@ -896,20 +888,18 @@ j end_read_instruction
 
 tipo_r_onlydestiny_rs:
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
-or $s5,$s5,$s1
-or $s5,$s5,$s0
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t1
 jal store_instruction
 j end_read_instruction
 
 tipo_r_onlydestiny_rd:
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
 
-or $s5,$zero,$s3 #rd
-or $s5,$s5,$s0
+or $s0,$s0,$t0 #rd
 jal store_instruction
 j end_read_instruction
 
@@ -925,14 +915,16 @@ tipo_r_ou_i_add:
 #         ori $at,$at,0xEF12
 
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
@@ -940,21 +932,19 @@ lbu $v0,($a1)
 bne $v0,'$', imm_add_operand
 
 jal read_register_operand
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
 
-addi $s0,$zero,0x20 
+or $s0,$s0,0x0020 
 
-or $s5,$s5,$s2
-or $s5,$s5,$s1
-or $s5,$s5,$s0
 
 jal store_instruction
 j end_r_ou_i
 
 imm_add_operand:
 jal read_imm_operand
-addi $s0,$zero,0x21 
+or $s0,$s0,0x0021 
 
 jal store_instruction
 j end_read_instruction
@@ -970,14 +960,16 @@ tipo_r_ou_i_addu:
 #         ori $at,$at,0xEF12
 #         addu $t1,$t2,$at
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
@@ -986,13 +978,11 @@ bne $v0,'$', imm_addu_operand
 
 jal read_register_operand
 
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
-addi $s0,$zero,0x21
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
+or $s0,$s0,0x0021
 
-or $s5,$s5,$s2
-or $s5,$s5,$s1
-or $s5,$s5,$s0
 jal store_instruction
 j end_r_ou_i
 
@@ -1008,12 +998,14 @@ j end_read_instruction
 
 tipo_i:
 jal read_register_operand
-add $s3,$zero,$v1 #rd
-sll $s3,$s3,11
+add $t0,$zero,$v1 #rd
+sll $t0,$t0,11
+or $s0,$s0,$t0
 jal consume_comma
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_comma
 jal read_imm_operand
 jal store_instruction
@@ -1021,20 +1013,19 @@ j end_read_instruction
 
 tipo_i_branch:
 jal read_register_operand
-add $s1,$zero,$v1 #rs
-sll $s1,$s1,21
+add $t0,$zero,$v1 #rs
+sll $t0,$t0,21
+or $s0,$s0,$t0
 jal consume_optional_whitespace
 jal consume_comma
 jal consume_optional_whitespace
 jal read_register_operand
-add $s2,$zero,$v1 #rt
-sll $s2,$s2,16
+add $t0,$zero,$v1 #rt
+sll $t0,$t0,16
+or $s0,$s0,$t0
 #jal save_pendency_label
 
 
-or $s5,$s5,$s2 #rt
-or $s5,$s5,$s1 #rs
-or $s5,$s5,$s0
 jal store_instruction
 j end_read_instruction
 
@@ -1061,7 +1052,7 @@ j end_read_instruction
 store_instruction:
 addi $t3,$zero,4
 mul $t2,$s6,$t3
-sw $s5,buffer_instrucoes($t2)
+sw $s0,buffer_instrucoes($t2)
 # incrementa contador de instrução
 jr $ra
 
