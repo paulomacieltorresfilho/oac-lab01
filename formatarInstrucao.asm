@@ -27,68 +27,59 @@
 		
 .end_macro 
 
-.macro dividirInstrucao (%instrucaoAlvo, %instrucaoParte1, %instrucaoParte2, %instrucaoParte3, %instrucaoParte4) #Usar depois de formatar a instrução
+.macro dividirInstrucao (%instrucaoAlvo, %instrucaoParte1, %instrucaoParte2, %instrucaoParte3, %instrucaoParte4) # Dividi a instrucao em quatro partes
 
-	MAIN:
+	MAIN:	
 		move $t0,%instrucaoAlvo
 		move $t1,%instrucaoParte1
-		move $t2,%instrucaoParte2
-		move $t3,%instrucaoParte3
-		move $t4,%instrucaoParte4
-	PRIMEIRA_PARTE:
-		lb $a0,0($t0)
-		beqz $a0,EXIT
-		beq $a0,' ',SEGUNDA_PARTE_TRANSICAO
-		sb $a0,0($t1)
-		addi $t0,$t0,1
+	PrimeiraParte:
+		lb $t2,0($t0)
+		beq $t2,' ',Transicionar12
+		sb $t2,0($t1)
 		addi $t1,$t1,1
-		j PRIMEIRA_PARTE
-	SEGUNDA_PARTE_TRANSICAO:
+		addi $t0,$t0,1
+		j PrimeiraParte
+	Transicionar12:
 		sb $zero,0($t1)
+		addi $t0,$t0,1
+		move $t1,%instrucaoParte2
+	SegundaParte:
+		lb $t2,0($t0)
+		beq $t2,' ',Transicionar23
+		sb $t2,0($t1)
 		addi $t1,$t1,1
 		addi $t0,$t0,1
-	SEGUNDA_PARTE:
-		lb $a0,0($t0)
-		beqz $a0,EXIT
-		beq $a0,' ',TERCEIRA_PARTE_TRANSICAO
-		sb $a0,0($t2)
-		addi $t0,$t0,1
-		addi $t2,$t2,1
-		j SEGUNDA_PARTE
-	TERCEIRA_PARTE_TRANSICAO:
-		sb $zero,0($t2)
-		addi $t2,$t2,1
+		j SegundaParte
+	Transicionar23:
+		sb $zero,0($t1)
 		addi $t0,$t0,3
-	TERCEIRA_PARTE:
-		lb $a0,0($t0)
-		beqz $a0,EXIT
-		beq $a0,' ',QUARTA_PARTE_TRANSICAO
-		sb $a0,0($t3)
+		move $t1,%instrucaoParte3
+	TerceiraParte:
+		lb $t2,0($t0)
+		beq $t2,' ',Transicionar34
+		sb $t2,0($t1)
+		addi $t1,$t1,1
 		addi $t0,$t0,1
-		addi $t3,$t3,1
-		j TERCEIRA_PARTE
-	QUARTA_PARTE_TRANSICAO:
-		sb $zero,0($t3)
-		addi $t3,$t3,1
-		addi $t0,$t0,3
-	QUARTA_PARTE:
-		lb $a0,0($t0)
-		beqz $a0,EXIT
-		sb $a0,0($t4)
+		j TerceiraParte
+	Transicionar34:
+		sb $zero,0($t1)
+		addi $t0,$t0,2
+		move $t1,%instrucaoParte4
+	QuartaParte:
+		lb $t2,0($t0)
+		beqz $t2,Exit
+		sb $t2,0($t1)
+		addi $t1,$t1,1
 		addi $t0,$t0,1
-		addi $t4,$t4,1
-		j QUARTA_PARTE
-	EXIT:
-		sb $zero,0($t4)
-		add $t1,$t1,$zero
-		add $t2,$t2,$zero
-		add $t3,$t3,$zero
-		add $t4,$t4,$zero
+		j QuartaParte
+	Exit:
+		sb $zero,0($t1)
+		
 .end_macro
 
 
 .data
-	instrucaoSemFormatacao: .asciiz "    addi          $ra    ,      $rb "
+	instrucaoSemFormatacao: .asciiz "    subu         $ra    ,      $rb ,0x23456 "
 	instrucaoComFormatacao: .space 32
 	instrucaoParte1: .space 32
 	instrucaoParte2: .space 32
