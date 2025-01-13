@@ -719,22 +719,20 @@ checkEnd:
 	inst_divu: .asciiz "divu"
 	inst_deret: .asciiz "deret"
 ################## Partes da Instrução ############################################################################	
-
-	instrucaoSemFormatacao: .asciiz "add      ,    $t0      ,  $t1     , $t2"
-
+	
+	instrucaoSemFormatacao: .asciiz "add     $t0  , $t1 , 0x7FFF"
 	instrucaoComFormatacao: .space 100000
-
 	instrucaoParte1:  .space 32 #Sempre vai ser a instruçao
-
 	instrucaoParte2: .space 32 #Sepre vai ser um registrador
-
 	instrucaoParte3: .space 32 #Pode ser um registrador ou imediato
-
 	instrucaoParte4: .space 32 #Pode ser um registrador ou imediato
-
 	instrucaoMontada: .space 100	
 	montadorHexadecimal: .space 100
 #################### Parametros Montador ########################################################################
+	.align 2
+	nulo: .word 0
+	.align 2
+	raRegister: .word 1
 	.align 2
 	rs: .space 4 # Parametro RS do montador
 	.align 2
@@ -863,18 +861,58 @@ checkEnd:
 
 	Case_addi:
 		li $s0, 0x08 #Carrega o op code
+		la $a0, instrucaoParte3
+		jal CONVERTE_REGISTRADOR 
+		la $t1 , rs
+		sw $v0,0($t1)
+		la $a0, instrucaoParte2
+		jal CONVERTE_REGISTRADOR
+		la $t1 , rt
+		sw $v0,0($t1) 
 		j MontarInstrucaoI
 	Case_andi:
 		li $s0, 0x0C #Carrega o op code
+		la $a0, instrucaoParte3
+		jal CONVERTE_REGISTRADOR 
+		la $t1 , rs
+		sw $v0,0($t1)
+		la $a0, instrucaoParte2
+		jal CONVERTE_REGISTRADOR
+		la $t1 , rt
+		sw $v0,0($t1) 
 		j MontarInstrucaoI
 	Case_ori:
 		li $s0, 0x0D #Carrega o op code
+		la $a0, instrucaoParte3
+		jal CONVERTE_REGISTRADOR 
+		la $t1 , rs
+		sw $v0,0($t1)
+		la $a0, instrucaoParte2
+		jal CONVERTE_REGISTRADOR
+		la $t1 , rt
+		sw $v0,0($t1) 
 		j MontarInstrucaoI
 	Case_xori:
 		li $s0, 0x0E #Carrega o op code
+		la $a0, instrucaoParte3
+		jal CONVERTE_REGISTRADOR 
+		la $t1 , rs
+		sw $v0,0($t1)
+		la $a0, instrucaoParte2
+		jal CONVERTE_REGISTRADOR
+		la $t1 , rt
+		sw $v0,0($t1) 
 		j MontarInstrucaoI
 	Case_slti:
 		li $s0, 0x0A #Carrega o op code
+		la $a0, instrucaoParte3
+		jal CONVERTE_REGISTRADOR 
+		la $t1 , rs
+		sw $v0,0($t1)
+		la $a0, instrucaoParte2
+		jal CONVERTE_REGISTRADOR
+		la $t1 , rt
+		sw $v0,0($t1) 
 		j MontarInstrucaoI
 	Case_lui:
 		li $s0, 0x0F
@@ -882,7 +920,12 @@ checkEnd:
 		la $a1,instrucaoParte4
 		limpaMemoria $a1
 		copyString $a0,$a1
+		la $a0, instrucaoParte2
+		la $t1 , rt
+		jal CONVERTE_REGISTRADOR
+		sw $v0,0($t1)
 		j MontarInstrucaoI
+		
 	Case_Add:
 		la $a1,instrucaoParte4
 		validNumber $a1
@@ -900,24 +943,24 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x20 # Funct
+		li $s5,0x20 # Funct
 		j MontarInstrucaoR
 
 	Case_Sub:
 		la $a0,instrucaoParte2 
 		jal CONVERTE_REGISTRADOR
 		la $t1,rd
-		sw $a0,0($a1) #### Salva o rd na memoria
+		sw $v0,0($t1) #### Salva o rd na memoria
 		la $a0,instrucaoParte3
 		jal CONVERTE_REGISTRADOR
 		la $t1,rs
-		sw $a0,0($a1) #### Salva o rs na memoria
+		sw $v0,0($t1) #### Salva o rs na memoria
 		la $a0,instrucaoParte4
 		jal CONVERTE_REGISTRADOR
 		la $t1,rt
-		sw $a0,0($a1) #### Salva o rt na memoria
+		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x22 # Funct
+		li $s5,0x22 # Funct
 		j MontarInstrucaoR
 
 	Case_And:
@@ -934,7 +977,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x24 # Funct
+		li $s5,0x24 # Funct
 		j MontarInstrucaoR
 
 	Case_Or:
@@ -951,7 +994,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x25 # Funct
+		li $s5,0x25 # Funct
 		j MontarInstrucaoR
 
 	Case_Nor:
@@ -968,7 +1011,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x27 # Funct
+		li $s5,0x27 # Funct
 		j MontarInstrucaoR
 		
 	Case_Xor:
@@ -985,7 +1028,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x26 # Funct
+		li $s5,0x26 # Funct
 		j MontarInstrucaoR
 		
 	Case_Mult:
@@ -998,7 +1041,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x18 # Funct
+		li $s5,0x18 # Funct
 		j MontarInstrucaoR
 		
 	Case_Div:
@@ -1011,7 +1054,7 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s5,0x1A # Funct
 		j MontarInstrucaoR
 
 	Case_Mfhi:
@@ -1020,7 +1063,7 @@ checkEnd:
 		la $t1,rd
 		sw $v0,0($t1) #### Salva o rs na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s5,0x10 # Funct
 		j MontarInstrucaoR
 		
 	Case_Mflo:
@@ -1029,7 +1072,7 @@ checkEnd:
 		la $t1,rd
 		sw $v0,0($t1) #### Salva o rs na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s5,0x12 # Funct
 		j MontarInstrucaoR
 		
 	Case_Clo:
@@ -1041,8 +1084,8 @@ checkEnd:
 		jal CONVERTE_REGISTRADOR
 		la $t1,rs
 		sw $v0,0($t1) #### Salva o rt na memoria
-		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s0,0x01C # OpCode
+		li $s5,0x21 # Funct
 		j MontarInstrucaoR
 	
 	Case_Clz:
@@ -1054,8 +1097,8 @@ checkEnd:
 		jal CONVERTE_REGISTRADOR
 		la $t1,rs
 		sw $v0,0($t1) #### Salva o rt na memoria
-		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s0,0x01c # OpCode
+		li $s5,0x20 # Funct
 		j MontarInstrucaoR
 
 	Case_Divu:
@@ -1068,9 +1111,41 @@ checkEnd:
 		la $t1,rt
 		sw $v0,0($t1) #### Salva o rt na memoria
 		li $s0,0x0 # OpCode
-		li $s7,0x1A # Funct
+		li $s5,0x1B # Funct
 		j MontarInstrucaoR
-
+		
+	Case_Addu:
+		la $a1,instrucaoParte4
+		validNumber $a1
+		beq $v0,1,MontarInstrucaoQuebrada
+		la $a0,instrucaoParte2 
+		jal CONVERTE_REGISTRADOR
+		la $t1,rd
+		sw $v0,0($t1) #### Salva o rd na memoria
+		la $a0,instrucaoParte3
+		jal CONVERTE_REGISTRADOR
+		la $t1,rs
+		sw $v0,0($t1) #### Salva o rs na memoria
+		la $a0,instrucaoParte4
+		jal CONVERTE_REGISTRADOR
+		la $t1,rt
+		sw $v0,0($t1) #### Salva o rt na memoria
+		li $s0,0x0 # OpCode
+		li $s5,0x20 # Funct
+		j MontarInstrucaoR
+		
+	MontarInstrucaoQuebrada:
+		$a0,instrucaoParte4
+		$a1,imediato
+		$a2,imediato2
+		$s1,
+		montarImediatoBinario $a1
+		separarImediato $a1,$a2
+		li $s0 0x0F
+		la $s1 raRegister
+		la $s2 nulo
+		
+		montadorTipoI ($s0,$s2,$s1,$a1
 		
 	MontarInstrucaoI:
 		# Montar Imediado
@@ -1099,7 +1174,7 @@ checkEnd:
 		la $s3,rd
 		la $s4,shamt
 		la $s5,montadorBinario
-		montadorTipoR $s0,$s1,$s2,$s3,$s4,$s7,$s5
+		montadorTipoR $s0,$s1,$s2,$s3,$s4,$s5,$s5
 		lw $t0,0($s5)
 		j Exit
 		
@@ -1339,4 +1414,3 @@ checkEnd:
 
 
 	Exit:
-		
