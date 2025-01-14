@@ -1,3 +1,47 @@
+.macro printChar %char
+	move $a0,%char
+	li $v0,11
+	syscall
+.end_macro
+
+.macro concatDuasStrings($str1, $str2, $destino)
+    # Inicializar registradores
+    move $t0, $str1              # $t0 aponta para a primeira string
+    move $t1, $str2              # $t1 aponta para a segunda string
+    move $t2, $destino           # $t2 aponta para o destino
+
+    # Copiar a primeira string para o destino
+ConcatenarPrimeira:
+    lb $t3, 0($t0)               # Lê caractere da primeira string
+    sb $t3, 0($t2)               # Escreve no destino
+    beqz $t3, AdicionarSeparador # Se encontrar nulo, adicionar separador
+    addi $t0, $t0, 1             # Avança na primeira string
+    addi $t2, $t2, 1             # Avança no destino
+    j ConcatenarPrimeira          # Continua copiando
+
+    # Adicionar separador ": "
+AdicionarSeparador:
+    li $t3, ':'                  # Caractere ':'
+    sb $t3, 0($t2)               # Adiciona ':' ao destino
+    addi $t2, $t2, 1             # Avança no destino
+    li $t3, ' '                  # Caractere espaço
+    sb $t3, 0($t2)               # Adiciona espaço ao destino
+    addi $t2, $t2, 1             # Avança no destino
+
+    # Copiar a segunda string para o destino
+ConcatenarSegunda:
+    lb $t3, 0($t1)               # Lê caractere da segunda string
+    sb $t3, 0($t2)               # Escreve no destino
+    beqz $t3, FimConcatenar      # Se encontrar nulo, encerra
+    addi $t1, $t1, 1             # Avança na segunda string
+    addi $t2, $t2, 1             # Avança no destino
+    j ConcatenarSegunda          # Continua copiando
+
+    # Fim da macro
+FimConcatenar:
+.end_macro
+
+
 .macro pegarInstrucao (%string,%offset,%enderecoSalvo)
 
 	move $t0,%string
@@ -41,83 +85,34 @@
 		move $v0,$t3
 .end_macro
 
-.macro concatDuasStrings %str1, %str2, %dest
-    # Copia a primeira string para o destino
-    move $t0, %str1           # Ponteiro da string 1
-    move $t1, %dest           # Ponteiro do destino
-concat_copy1:
-    lb $t2, 0($t0)            # Carrega o próximo caractere de string1
-    beqz $t2, add_newline     # Se caractere nulo, vai adicionar '\n'
-    sb $t2, 0($t1)            # Escreve no destino
-    addi $t0, $t0, 1          # Avança o ponteiro de string1
-    addi $t1, $t1, 1          # Avança no destino
-    j concat_copy1
 
-    # Adiciona o caractere de quebra de linha
-add_newline:
-    li $t2, 10                # ASCII de '\n'
-    sb $t2, 0($t1)            # Salva '\n' no destino
-    addi $t1, $t1, 1          # Avança no destino
+.macro concatBuffer(%buffer, %string)
+    # Encontra o final do buffer (localiza o último '\n' ou caractere nulo)
+    move $t0, %buffer       # $t0 aponta para o início do buffer
+find_end:
+    lb $t1, 0($t0)          # Carrega o próximo byte
+    beqz $t1, append        # Se for nulo, inicia a escrita
+    addi $t0, $t0, 1        # Avança no buffer
+    b find_end
 
-    # Copia a segunda string para o destino
-    move $t0, %str2           # Ponteiro da string 2
-concat_copy2:
-    lb $t2, 0($t0)            # Carrega o próximo caractere de string2
-    beqz $t2, finalize        # Se caractere nulo, finaliza
-    sb $t2, 0($t1)            # Escreve no destino
-    addi $t0, $t0, 1          # Avança o ponteiro de string2
-    addi $t1, $t1, 1          # Avança no destino
-    j concat_copy2
+append:
+    # Escreve a string no final do buffer
+    move $t2, %string       # $t2 aponta para o início da string
+write_string:
+    lb $t3, 0($t2)          # Carrega o próximo caractere da string
+    beqz $t3, write_newline # Se for nulo, vai escrever o '\n'
+    sb $t3, 0($t0)          # Salva o caractere no buffer
+    addi $t2, $t2, 1        # Avança na string
+    addi $t0, $t0, 1        # Avança no buffer
+    b write_string
 
-finalize:
-    sb $zero, 0($t1)          # Adiciona caractere nulo para finalizar string
-    move $v0, $t1             # Retorna a posição final
-.end_macro
+write_newline:
+    li $t3, 10              # ASCII para '\n'
+    sb $t3, 0($t0)          # Adiciona '\n' ao final
+    addi $t0, $t0, 1        # Avança no buffer
 
-
-.macro concatTresStrings (%str1, %str2, %str3, %dest)
-    # Copia a primeira string
-    move $a0, %str1           # Endereço da primeira string
-concat_copy1:
-    lb $t0, 0($a0)            # Carrega o próximo caractere da string
-    beqz $t0, insert_space1   # Se for nulo, vai para a próxima string
-    sb $t0, 0(%dest)          # Salva no buffer de destino
-    addi $a0, $a0, 1          # Avança na string
-    addi %dest, %dest, 1      # Avança no buffer de destino
-    j concat_copy1
-
-insert_space1:
-    li $t0, 32                # ASCII para espaço (' ')
-    sb $t0, 0(%dest)          # Salva o espaço no buffer de destino
-    addi %dest, %dest, 1
-
-    # Copia a segunda string
-    move $a0, %str2           # Endereço da segunda string
-concat_copy2:
-    lb $t0, 0($a0)
-    beqz $t0, insert_space2
-    sb $t0, 0(%dest)
-    addi $a0, $a0, 1
-    addi %dest, %dest, 1
-    j concat_copy2
-
-insert_space2:
-    li $t0, 32
-    sb $t0, 0(%dest)
-    addi %dest, %dest, 1
-
-    # Copia a terceira string
-    move $a0, %str3           # Endereço da terceira string
-concat_copy3:
-    lb $t0, 0($a0)
-    beqz $t0, end_concat_three
-    sb $t0, 0(%dest)
-    addi $a0, $a0, 1
-    addi %dest, %dest, 1
-    j concat_copy3
-
-end_concat_three:
-
+    # Finaliza com nulo
+    sb $zero, 0($t0)        # Adiciona caractere nulo ao final
 .end_macro
 
 .macro separarSecoes (%textoOriginal , %secaoData , %secaoText)
@@ -952,7 +947,8 @@ checkEnd:
 
 .data
 ############### Instruções gerais ############################################################################	
-   	input: .asciiz  ".data\n    valor1: .word 10\n    valor2: .word 20\n    mensagem: .asciiz \"Olá, Mundo!\"\n\n.text\ addi  $t0, $t1, 0x1"
+   	input: .asciiz  "..data\n   valor1: .word 10\n    valor2: .word 20\n    mensagem: .asciiz \"Olá, Mundo!\"\n\n.text   addi  $t0,   $t1,  0x1\n  andi $t2, $t3,   0xFF00\n ori  $t4,   $t5,   0x0F\n   label1: xori  $t6,   $t7,  0x0FFF\n lui  $t8,  0x1234\n  addi   $t9,  $t0,   0x10\n  label2:  andi   $s0,  $s1,  0xF0F0\n ori $s2,  $s3,  0x00FF\n  xori  $s4, $s5,   0xFF00\n  label3: lui  $s6,  0x5678\n  addi   $t1,   $t2,  0x5\n   andi   $t3, $t4,  0xA0A0\n ori $t5,   $t6,  0xFF\nxori  $t7,   $t8,   0x0B0B\n lui   $t9,  0x9876\n label4:  addi   $s0,  $s1,  0x3C\n  andi   $s2,   $s3,   0x1234\n ori $s4, $s5,   0xF00F\nxori   $s6,  $s7, 0x0C0C\n   lui  $t0,   0x4321\n   label5:  addi  $t1,  $t2,  0x44\n  andi $t3, $t4,  0xABCD\n ori   $t5,  $t6,   0x123\nxori  $t7,   $t8,  0x9876\n label6: lui   $t9,  0x0010\n  addi  $s0, $s1,   0x2F\n  andi   $s2,   $s3,  0x0D0D\n ori $s4,  $s5,   0xAA55\n  xori  $s6,  $s7,  0x55AA\n.text"
+
 	inputData: .space 20000
 	inputText: .space 20000
 	outputText: .space 20000
@@ -985,7 +981,7 @@ checkEnd:
 	instrucaoParte2: .space 100 #Sepre vai ser um registrador
 	instrucaoParte3: .space 100 #Pode ser um registrador ou imediato
 	instrucaoParte4: .space 100 #Pode ser um registrador ou imediato
-	instrucaoMontada: .space 100	
+	instrucaoMontada: .space 100
 	montadorHexadecimal: .space 100
 	numeroInstrucao: .space 100
 #################### Parametros Montador ########################################################################
@@ -1050,6 +1046,14 @@ checkEnd:
 		la $a0,bufferPosicaoInstrucao
 		addi $v0,$v0,1
 		lw $v0,0($a0)
+	
+	DividiInstrucao:
+		la $a0,instrucaoParte1
+		la $a1,instrucaoParte2
+		la $a2,instrucaoParte3
+		la $a3,instrucaoParte4
+		la $t0,instrucaoParte0
+		dividirInstrucao $t0,$a0,$a1,$a2,$a3
 		
 	CompararInstrucoes:
 		
@@ -1451,8 +1455,6 @@ checkEnd:
 		la $s3, imediato
 		la $a1,montadorBinario #Aonde a instrucao vai ser salva em Binario_
 		montadorTipoI $s0,$s1,$s2,$s3,$a1
-		la $a0,montadorHexadecimal
-		lw $a0,0($t0)
 		beq $s7,1,Voltar
 		j MontarBinarioChar
 	Voltar:
@@ -1483,35 +1485,28 @@ checkEnd:
 	
 	MontarBinarioChar:
 		la $a0,montadorBinario
-		la $a0,0($a0)
+		lw $a0,0($a0)
 		la $a1,montadorHexadecimal
 		converteBinChar $a0,$a1
-		la $a0,bufferNumeroInstrucao
-		la $a0,0($a0)
+		la $a1,montadorHexadecimal
+		la $a2,bufferNumeroInstrucao
+		lw $a0,0($a2)
 		addi $a0,$a0,1
+		sw $a0,0($a2)
 		la $a1,numeroInstrucao
 		converteBinChar $a0,$a1
-		printString $a1
-		j Exit
+		
 	FormarInstrucao:
 		la $a0,numeroInstrucao
 		la $a1 montadorHexadecimal
-		la $a2 instrucaoParte0
 		la $a3,instrucaoMontada
-		concatTresStrings $a0,$a1,$a2,$a3
-		printString $a3
-		j Exit
+		concatDuasStrings $a0,$a1,$a3,
 	IncluirInstrucao:
 		la $a1,outputText
 		la $a2,instrucaoMontada
-		la $a3,bufferEnderecoConjunto
-		lw $a3,0($a3)
-		concatDuasStrings $a1,$a2,$a3
-		la $t0,bufferEnderecoConjunto
-		sw $t0,0($t0)
+		concatBuffer $a1,$a2
 	Verifica:
 		jal LIMPA_GERAL
-		la $t0,bufferPosicaoInstrucao
 		j PegarInstrucao
 		
 	CONVERTE_REGISTRADOR:
