@@ -1,3 +1,257 @@
+.macro pegarInstrucao (%string,%offset,%enderecoSalvo)
+
+	move $t0,%string
+	move $t1,%offset
+	move $t2,%enderecoSalvo
+	li $t3,0
+	li $t6,10
+	add $t0,$t0,$t1
+	move $t4,$t0
+	li $t7,1
+	VerificaLabel:
+		lb $t5,0($t0)
+		beqz $t5,Exit
+		beq $t5,':',Pulalabel
+		beq $t5,$t6,Verifica
+		addi $t3,$t3,1
+		addi $t0,$t0,1
+		j VerificaLabel
+	Pulalabel:
+		addi $t3,$t3,1
+		addi $t0,$t0,2
+		move $t4,$t0
+		li $t7,0
+	Verifica:
+		beq $t7,1,ZerarContador
+		addi $t3,$t3,1
+	PegarComando:
+		lb $t5,0($t4)
+		beqz $t5,Exit
+		beq $t5,$t6,Exit
+		sb $t5,0($t2)
+		addi $t4,$t4,1
+		addi $t2,$t2,1
+		addi $t3,$t3,1
+		j PegarComando
+	ZerarContador:
+		li $t3,0
+		j PegarComando
+	Exit:
+		add $t3,$t3,$t1
+		move $v0,$t3
+.end_macro
+
+.macro concatDuasStrings %str1, %str2, %dest
+    # Copia a primeira string para o destino
+    move $t0, %str1           # Ponteiro da string 1
+    move $t1, %dest           # Ponteiro do destino
+concat_copy1:
+    lb $t2, 0($t0)            # Carrega o próximo caractere de string1
+    beqz $t2, add_newline     # Se caractere nulo, vai adicionar '\n'
+    sb $t2, 0($t1)            # Escreve no destino
+    addi $t0, $t0, 1          # Avança o ponteiro de string1
+    addi $t1, $t1, 1          # Avança no destino
+    j concat_copy1
+
+    # Adiciona o caractere de quebra de linha
+add_newline:
+    li $t2, 10                # ASCII de '\n'
+    sb $t2, 0($t1)            # Salva '\n' no destino
+    addi $t1, $t1, 1          # Avança no destino
+
+    # Copia a segunda string para o destino
+    move $t0, %str2           # Ponteiro da string 2
+concat_copy2:
+    lb $t2, 0($t0)            # Carrega o próximo caractere de string2
+    beqz $t2, finalize        # Se caractere nulo, finaliza
+    sb $t2, 0($t1)            # Escreve no destino
+    addi $t0, $t0, 1          # Avança o ponteiro de string2
+    addi $t1, $t1, 1          # Avança no destino
+    j concat_copy2
+
+finalize:
+    sb $zero, 0($t1)          # Adiciona caractere nulo para finalizar string
+    move $v0, $t1             # Retorna a posição final
+.end_macro
+
+
+.macro concatTresStrings (%str1, %str2, %str3, %dest)
+    # Copia a primeira string
+    move $a0, %str1           # Endereço da primeira string
+concat_copy1:
+    lb $t0, 0($a0)            # Carrega o próximo caractere da string
+    beqz $t0, insert_space1   # Se for nulo, vai para a próxima string
+    sb $t0, 0(%dest)          # Salva no buffer de destino
+    addi $a0, $a0, 1          # Avança na string
+    addi %dest, %dest, 1      # Avança no buffer de destino
+    j concat_copy1
+
+insert_space1:
+    li $t0, 32                # ASCII para espaço (' ')
+    sb $t0, 0(%dest)          # Salva o espaço no buffer de destino
+    addi %dest, %dest, 1
+
+    # Copia a segunda string
+    move $a0, %str2           # Endereço da segunda string
+concat_copy2:
+    lb $t0, 0($a0)
+    beqz $t0, insert_space2
+    sb $t0, 0(%dest)
+    addi $a0, $a0, 1
+    addi %dest, %dest, 1
+    j concat_copy2
+
+insert_space2:
+    li $t0, 32
+    sb $t0, 0(%dest)
+    addi %dest, %dest, 1
+
+    # Copia a terceira string
+    move $a0, %str3           # Endereço da terceira string
+concat_copy3:
+    lb $t0, 0($a0)
+    beqz $t0, end_concat_three
+    sb $t0, 0(%dest)
+    addi $a0, $a0, 1
+    addi %dest, %dest, 1
+    j concat_copy3
+
+end_concat_three:
+
+.end_macro
+
+.macro separarSecoes (%textoOriginal , %secaoData , %secaoText)
+
+	move $t0,%textoOriginal
+	move $t1,%secaoData
+	
+	EncontrarData:
+	lb $t2,0($t0)
+	beq $t2,'.',PularData
+	addi $t0,$t0,1
+	j EncontrarData
+	
+	PularData:
+	addi $t0,$t0,5
+	
+	SalvarData:
+	lb $t2,0($t0)
+	beq $t2,'.',VerificaT
+	sb $t2,0($t1)
+	addi $t0,$t0,1
+	addi $t1,$t1,1
+	j SalvarData
+	
+	VerificaT:
+	lb $t2,1($t0)
+	beq $t2,'t',PularText
+	addi $t0,$t0,1
+	j SalvarData
+	
+	PularText:
+	move $t1,%secaoText
+	addi $t0,$t0,5
+	
+	SalvarText:
+	lb $t2,0($t0)
+	beqz $t2, Exit
+	sb $t2,0($t1)
+	addi $t0,$t0,1
+	addi $t1,$t1,1
+	j SalvarText
+	
+	Exit:
+	
+.end_macro
+
+.macro formatarInstrucaoArquivoText (%instrucaoSemFormatacao , %instrucaoComFormatacao)
+
+	move $t0,%instrucaoSemFormatacao
+	move $t1,%instrucaoComFormatacao
+	li $t3,0 #conta quantos simbolos ja coloquei
+	li $t4,0
+	li $t5,1
+	
+	Loop:
+	lb $t2 , 0($t0)
+	beqz $t2,Exit
+	beq $t2,':',ColocaDoisPontos
+	beq $t2,44,VerificaCaract
+	beq $t2,32,VerificaCaract
+	beq $t2,10,VerificaQuebraDeLinha
+	sb $t2,0($t1)
+	li $t4,1
+	li $t5,0
+	Atualiza:
+	addi $t0,$t0,1
+	addi $t1,$t1,1
+	j Loop
+	
+	ColocaDoisPontos:
+	sb $t2,0($t1)
+	li $t2,10
+	sb $t2,1($t1)
+	addi $t0,$t0,1
+	addi $t1,$t1,2
+	li $t5,1
+	li $t3,0
+	li $t4,0
+	j Loop
+	
+	VerificaCaract: #Verifica se tinha caracter antes de colocas os caracteres especiais
+	beq $t4,1,ColocarCaract
+	addi $t0,$t0,1
+	j Loop
+	
+	ColocarCaract:
+	beq $t3,0,InserirEspaco
+	li $t2,32
+	sb $t2,0($t1)
+	li $t2,44
+	sb $t2,1($t1)
+	li $t2,32
+	sb $t2,2($t1)
+	addi $t3,$t3,3
+	addi $t1,$t1,3
+	addi $t0,$t0,1
+	li $t4,0
+	j Loop
+	
+	InserirEspaco:
+	li $t2,32
+	sb $t2,0($t1)
+	addi $t3,$t3,1
+	li $t4,0
+	j Atualiza
+	
+	VerificaQuebraDeLinha:
+	beq $t5,0,VerificaPosterior
+	bne $t2,10,Loop
+	addi $t0,$t0,1
+	lb $t2,0($t0)
+	li $t3,0
+	li $t4,0
+	j VerificaQuebraDeLinha
+	
+	VerificaPosterior:
+	lb $t2,1($t0)
+	bne $t2,10,ColocaQuebraDeLinha
+	beqz $t2,Exit
+	addi $t0,$t0,1
+	j Loop
+	
+	ColocaQuebraDeLinha:
+	li $t5,1
+	li $t3,0
+	li $t4,0
+	li $t2,10
+	sb $t2,0($t1)
+	j Atualiza
+	
+	Exit:
+		sb $zero,0($t1)
+.end_macro
+
 .macro formatarInstrucao (%endSemFormatacao, %endComFormatacao)
 	Main:
 		move $t0,%endSemFormatacao
@@ -695,7 +949,13 @@ checkEnd:
 	Exit:
 .end_macro
 
+
 .data
+############### Instruções gerais ############################################################################	
+   	input: .asciiz  ".data\n    valor1: .word 10\n    valor2: .word 20\n    mensagem: .asciiz \"Olá, Mundo!\"\n\n.text\ addi  $t0, $t1, 0x1"
+	inputData: .space 20000
+	inputText: .space 20000
+	outputText: .space 20000
 ################## Instruções Imediatas ##########################################################################
 	inst_addi: .asciiz "addi"
 	inst_andi: .asciiz "andi"
@@ -719,20 +979,16 @@ checkEnd:
 	inst_divu: .asciiz "divu"
 	inst_deret: .asciiz "deret"
 ################## Partes da Instrução ############################################################################	
-	
-	instrucaoSemFormatacao: .asciiz "add     $t0  , $t1 , 0x7FFF"
-	instrucaoComFormatacao: .space 100000
-	instrucaoParte1:  .space 32 #Sempre vai ser a instruçao
-	instrucaoParte2: .space 32 #Sepre vai ser um registrador
-	instrucaoParte3: .space 32 #Pode ser um registrador ou imediato
-	instrucaoParte4: .space 32 #Pode ser um registrador ou imediato
+	instrucaoComFormatacao: .space 20000
+	instrucaoParte0:  .space 100
+	instrucaoParte1:  .space 100 #Sempre vai ser a instruçao
+	instrucaoParte2: .space 100 #Sepre vai ser um registrador
+	instrucaoParte3: .space 100 #Pode ser um registrador ou imediato
+	instrucaoParte4: .space 100 #Pode ser um registrador ou imediato
 	instrucaoMontada: .space 100	
 	montadorHexadecimal: .space 100
+	numeroInstrucao: .space 100
 #################### Parametros Montador ########################################################################
-	.align 2
-	nulo: .word 0
-	.align 2
-	raRegister: .word 1
 	.align 2
 	rs: .space 4 # Parametro RS do montador
 	.align 2
@@ -749,11 +1005,18 @@ checkEnd:
 	imediato2: .space 4
 	.align 2
 	montadorBinario:.space 4 # Montador da instruçao em binario
-####################### Erros ###################################################################################	
+############################ Buffer de Controles ###############################################################
 
+	.align 2
+	bufferPosicaoInstrucao: .word 0
+	.align 2
+	bufferNumeroInstrucao: .word 0
+	.align 2
+	bufferEnderecoConjunto: .space 4
+	
+####################### Erros ###################################################################################	
 	Erro_imediato: .asciiz "Imediato Invalido \n" # aparece casa o montador seja invalido
 	Erro_instrucao: .asciiz "Instrucão Invalida \n"
-	
 ########################  Registradosres ###########################################################################	
 # formato: quantidade registradores, primeiro valor
 	registradores_v: .byte '2', 0x2 # 2 registradores, primeiro é o 0x2
@@ -761,23 +1024,32 @@ checkEnd:
 	registradores_t: .byte '8', 0x8
 	registradores_s: .byte '8', 0x10
 	registradores_k: .byte '2', 0x1a
-	registrador_exemplo: .ascii "$31"
-
+	registrador_at : .asciiz "$at"
+#####################################################################################################################
 .text
 	
 	FormatarInstrucao:
+		la $a0,input   ### Entrada de texto do arquivi .asm
+		la $a1,inputData ### Local onde vai armazenar as strings referentes ao .data
+		la $a2,inputText ### Local onde vai armazenar as strings referentes ao .text
+		separarSecoes $a0,$a1,$a2 ### Separa as seções .data e .text
+		la $a0,instrucaoComFormatacao ### Local onde vai ser salvo as intrucoes seguindo um padrão de formatação
+		formatarInstrucaoArquivoText $a2,$a0 ### Formata a seção de instrucao e salva no local de memoria Instrucao com Formatacao
+		la $t0,outputText
+		la $t1,bufferEnderecoConjunto
+		sw $t0,0($t1)
 	
-		la $a0, instrucaoSemFormatacao #instrucao Sem formatacao do arquivo
-		la $a1, instrucaoComFormatacao #Aonde vai ser salva  instrucao formatada
-		formatarInstrucao $a0,$a1
-		beqz $v0,Erro_Instrucao
-		la $s0, instrucaoComFormatacao
-		la $a0, instrucaoParte1
-		la $a1, instrucaoParte2
-		la $a2, instrucaoParte3
-		la $a3, instrucaoParte4	
-		dividirInstrucao $s0,$a0,$a1,$a2,$a3
-		limparRegistradores
+		
+	PegarInstrucao:
+		la $a0,bufferPosicaoInstrucao
+		lw $a1, 0($a0)
+		la $a2, instrucaoParte0
+		la $a3, instrucaoComFormatacao
+		pegarInstrucao $a3,$a1,$a2
+		beq $a1,$v0,Exit
+		la $a0,bufferPosicaoInstrucao
+		addi $v0,$v0,1
+		lw $v0,0($a0)
 		
 	CompararInstrucoes:
 		
@@ -1117,7 +1389,7 @@ checkEnd:
 	Case_Addu:
 		la $a1,instrucaoParte4
 		validNumber $a1
-		beq $v0,1,MontarInstrucaoQuebrada
+		beq $v0,1,QuebraInstrucao
 		la $a0,instrucaoParte2 
 		jal CONVERTE_REGISTRADOR
 		la $t1,rd
@@ -1133,30 +1405,46 @@ checkEnd:
 		li $s0,0x0 # OpCode
 		li $s5,0x20 # Funct
 		j MontarInstrucaoR
-		
-	MontarInstrucaoQuebrada:
-		$a0,instrucaoParte4
-		$a1,imediato
-		$a2,imediato2
-		$s1,
-		montarImediatoBinario $a1
-		separarImediato $a1,$a2
-		li $s0 0x0F
-		la $s1 raRegister
-		la $s2 nulo
-		
-		montadorTipoI ($s0,$s2,$s1,$a1
+	
+	QuebraInstrucao:
+		li $s7,1
+		la $a0,instrucaoParte4
+		la $a1,imediato
+		la $a2,imediato2
+		montarImediatoBinario $a0,$a1
+		separarImediatos $a1,$a2
+		la $t0, rt
+		li $t1, 1
+		lw $t1,0($t0)
+		la $t0,rs
+		lw $zero,0($t0)
+		li $s0, 0x0F
+		jal MontadorI
+		li $t1,1
+		la $t0,rs
+		lw $t1,0($t0)
+		li $s0, 0x0D
+		la $t0,imediato2
+		la $t1,imediato
+		lw $t0,0($t1)
+		jal MontadorI
+		li $s7 , 0
+		la $a0 , instrucaoParte4
+		limpaMemoria $a0
+		la $t0,registrador_at
+		copyString $t0,$at
+		j CompararInstrucoes
 		
 	MontarInstrucaoI:
 		# Montar Imediado
 		la $a0,instrucaoParte4 # Aonde o imediato fica salvo
 		la $a1,imediato # Aonde o imediato vai ser salvo
-
 		montarImediatoBinario $a0,$a1
 		lw $t0,0($a1)
 		sgt $t1,$t0,0x00007fff
-		beq $t1,1,Exit
+		beq $t1,1,QuebraInstrucao
 		beq $v0,0,Erro_Imediato #Verifica se teve erro de imediato invalido
+	MontadorI:
 		#Carregar Paramentros
 		la $s1, rs
 		la $s2, rt
@@ -1165,8 +1453,10 @@ checkEnd:
 		montadorTipoI $s0,$s1,$s2,$s3,$a1
 		la $a0,montadorHexadecimal
 		lw $a0,0($t0)
-		j Exit
-	
+		beq $s7,1,Voltar
+		j MontarBinarioChar
+	Voltar:
+		jr $ra
 
 	MontarInstrucaoR:
 		la $s1,rs
@@ -1176,7 +1466,7 @@ checkEnd:
 		la $s5,montadorBinario
 		montadorTipoR $s0,$s1,$s2,$s3,$s4,$s5,$s5
 		lw $t0,0($s5)
-		j Exit
+	j MontarBinarioChar
 		
 	Erro_Instrucao:
 		la $a0,Erro_instrucao #carregar o erro
@@ -1191,7 +1481,39 @@ checkEnd:
 		la $a1,instrucaoMontada #carregar aonde seria colocada a instrucao
 		copyString $a0,$a1 #Salvar o erro onde seria coloca a instrucao
 	
-	
+	MontarBinarioChar:
+		la $a0,montadorBinario
+		la $a0,0($a0)
+		la $a1,montadorHexadecimal
+		converteBinChar $a0,$a1
+		la $a0,bufferNumeroInstrucao
+		la $a0,0($a0)
+		addi $a0,$a0,1
+		la $a1,numeroInstrucao
+		converteBinChar $a0,$a1
+		printString $a1
+		j Exit
+	FormarInstrucao:
+		la $a0,numeroInstrucao
+		la $a1 montadorHexadecimal
+		la $a2 instrucaoParte0
+		la $a3,instrucaoMontada
+		concatTresStrings $a0,$a1,$a2,$a3
+		printString $a3
+		j Exit
+	IncluirInstrucao:
+		la $a1,outputText
+		la $a2,instrucaoMontada
+		la $a3,bufferEnderecoConjunto
+		lw $a3,0($a3)
+		concatDuasStrings $a1,$a2,$a3
+		la $t0,bufferEnderecoConjunto
+		sw $t0,0($t0)
+	Verifica:
+		jal LIMPA_GERAL
+		la $t0,bufferPosicaoInstrucao
+		j PegarInstrucao
+		
 	CONVERTE_REGISTRADOR:
 	addi $sp, $sp, -8
 	sw $a0, 4($sp)
@@ -1411,6 +1733,47 @@ checkEnd:
 		lw $a0, 4($sp)
 		addi $sp, $sp, 8
 		jr $ra
-
+	
+	LIMPA_GERAL:
+		
+		la $a0,outputText
+		li $v0,4
+		
+		la $a0,instrucaoParte0
+		la $a1,instrucaoParte1
+		la $a2,instrucaoParte2
+		la $a3,instrucaoParte4
+		la $s0,imediato
+		la $s1,imediato2
+		la $s2,montadorBinario
+		la $s3,instrucaoMontada
+		la $s5,montadorHexadecimal
+		
+		limpaMemoria $a0
+		limpaMemoria $a1
+		limpaMemoria $a2
+		limpaMemoria $a3
+		limpaMemoria $s0
+		limpaMemoria $s1
+		limpaMemoria $s2
+		limpaMemoria $s3
+		limpaMemoria $s5
+		
+		la $a0,rs
+		la $a1,rt
+		la $a2,rd
+		la $a3,shamt
+		
+		lw $zero,0($a0)
+		lw $zero,0($a1)
+		lw $zero,0($a2)
+		lw $zero,0($a3)
+		limparRegistradores
+		jr $ra
 
 	Exit:
+		la $a0,outputText
+		li $v0,4
+		syscall
+		la $v0,10
+		syscall
